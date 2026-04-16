@@ -1,0 +1,95 @@
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{fig/workflow.pdf}
+    \caption{Workflow of \toolname.}
+    \label{fig:workflow}
+\end{figure*}
+
+
+\section{Design}\label{sec:design}
+In this section, we present the design of \toolname for detecting promotion abuse fraud. We first introduce the multi-relation fusion method to represent the relationship between users in multiple dimensions. Then we present the multi-relation fused homogeneous graph with attention mechanism to conjointly analyze the transaction behavior in multiple dimensions. Finally, we propose a semi-supervised learning method with an autoencoder to enhance the scalability in detecting fraudsters in the real-world production environment. The workflow of \toolname is illustrated in Figure~\ref{fig:workflow}.
+
+
+\subsection{Multi-relation Fusion}\label{sec:design:relation}
+Spatial and temporal relations are crucial for detecting promotion abuse fraud. Relying solely on individual relations may be insufficient to effectively capture fraudulent activities and differentiate them from normal transactions. Therefore, it is essential to explore the relationships between users across multiple dimensions.
+To address this challenge, we propose a multi-relation fusion method that integrates spatial and temporal information to represent the complex relationships between users. This method comprises two key steps: relation embedding and weighted concatenation. The relation embedding step utilizes \ac{kg} embeddings to capture intricate user relationships and generate embeddings for each relation. Then the weighted concatenation of these embeddings is performed to incorporate spatial and temporal information, as well as to quantify the strength of user relationships across different dimensions.
+
+\noindent \textbf{\ac{kg}-based Relation Embedding.} 
+To initialize the relation embedding, we leverage \ac{kg}~\cite{hogan2021knowledge,10.1145/3658644.3690354} embedding techniques due to their effectiveness in capturing complex relationships between entities. \ac{kg} is effective in representing entities and their interrelations through triples of the form $(h, r, t)$, where $h$ and $t$ are entities, and $r$ is the relation between them.
+Existing \ac{kg} embedding methods~\cite{bordes2013translating, wang2014knowledge, lin2015learning, sun2019rotate, yang2015embedding} learn the embedding for entities and relations that satisfy $e_{h} + e_{r} \approx e_{t}$, where $e_{h}$, $e_{r}$, and $e_{t}$ are vectors in high dimensions. 
+In our scenario, the relation between users in the dimension of $r_{1}$ can be represented as two triple $(u_{i}, r_{1}, u_{j})$ and $(u_{j}, r_{1}, u_{i})$, where $u_{i}$ and $u_{j}$ represent users and $r_{1}$ represents the relation type. We represent this relation between user $u_{i}$ and user $u_{j}$ in two triples because the relation between users is symmetric in the dimension of $r_{1}$.
+In this way, the \ac{kg} can represent the relationship between users in multiple dimensions. TransR~\cite{lin2015learning} is particularly suitable for our needs as it can handle 1-to-N, N-to-1, and N-to-N relationships, which are common in user relationships in e-commerce platforms.
+
+Formally, TransR embeds user entities $u_{i}, u_{j}$ and relation $r$ into vectors $\mathbf{e}_{u_{i}}, \mathbf{e}_{u_{j}} \in \mathbb{R}^{d}, \mathbf{e}_{r} \in \mathbb{R}^{k}$. For each relation $r$, it specifies a projection matrix $\mathbf{W}_{r} \in \mathbb{R}^{d \times k}$ to project the user entities from $d$-dimensional space to $k$-dimensional space. The embedding of the relation $r$ is calculated as $\mathbf{e}^{r}_{u_{i}} = \mathbf{e}_{u_{i}}\mathbf{W}_{r}$. The score function of TransR model is defined as $f_{r}(i,j) = ||\mathbf{e}_{u_{i}}^{r} + \mathbf{e}_{r} - \mathbf{e}_{u_{j}}^{r}||$, where $||\cdot||$ denotes the L1-norm distance function. To optimize the TransR model, we follow the margin-based score function as the objective for training
+\begin{equation}\label{eqa:transr}
+\mathcal{L}_{r} = \sum_{(i,r,j)\in S} \sum_{(i',r,j')\in S'} \max(0,f_{r}(i,j) + \gamma - f_{r}(i',j'))
+\end{equation}
+, where $S$ and $S'$ are the positive and negative triple sets, respectively, and $\gamma$ is the margin hyperparameter.
+However, the embedding learning of TransR cannot deal with the new entities as it can only learn the embedding of the entities that appear in the training set. 
+While in our scenario, the new users may appear in the production environment.
+To address this challenge, we only use the embeddings of the relations $E_{r} = \{\mathbf{e}_{r_{1}}, \mathbf{e}_{r_{2}}, ..., \mathbf{e}_{r_{|\mathcal R|}}\}$ to initialize the relation embedding for later training. 
+
+\noindent \textbf{Weighted Concatenation.}
+After getting the embeddings of each type of relation, we propose a weighted concatenation method to get the final embedding of the relation between users.  
+Although the high cohesion in spatial and temporal is the fundamental characteristic of fraud transactions, users can show different cohesion in different dimensions. For example, the users can show high cohesion in the dimension of the geohash and the dimension of the promotion, but they may show low cohesion in the dimension of the chat room. To better capture the divergence of the cohesion in different dimensions, we propose concatenating the embeddings of the relations into one vector. We utilize the concatenation operation because it can better capture the cohesion in multiple dimensions compared with the mean operation. A naive approach is to concatenate the embeddings of each type of relation if there is a relation between users, otherwise set the embedding of the relation to zero. However, this approach cannot capture the strength of the relationship between users in different dimensions. Existing \ac{kg} embedding methods treat all the relations equally and do not consider the strength of each relation.
+
+To consider the strength of the relations between users, we propose to concatenate the relation embeddings with the weighted concatenation to get the final embeddings $\mathcal F$ of the relations between users. 
+As we have discussed in Section~\ref{sec:study:analysis}, the co-occurrence frequency of users in different spatial relations, denoted as $w_{r}^{ij}$, effectively quantifies the strength of temporal cohesion of users. This metric captures the strength of relationships across various dimensions. Fraudsters are typically organized in groups and exhibit higher value of this metric in spatial relations compared to normal users.
+Therefore we can utilize $w_{r}^{ij}$ to quantify the strength of the relations between users. Therefore, the final embeddings of the relations between users are calculated as follows:
+
+\begin{equation}
+    \mathbf{f}_{ij} = \mathbin\Vert_{r = 1}^{|\mathcal R|}
+    \begin{cases}
+        \hfil w_{r}^{ij} \cdot \mathbf{e_{r_{i}}}&, m_{ij}(r) = 1 \\
+        \hfil \mathbf{0} & , m_{ij}(r) = 0 \\
+    \end{cases}
+\end{equation}
+, where $m_{ij}$ is the relation map and $m_{ij}(r)$ represents whether there is relation $r$ between users $u_{i}$ and $u_{j}$, $\mathbin\Vert$ is the concatenation operation. If there is no relation between users $u_{i}$ and $u_{j}$ in the dimension $r$, we set the embedding of the relation as vector $\mathbf{0}$, which is the same size as the embedding of the relation. Then we get the final embeddings of the relations between users $\mathcal F = \{\mathbf{f}_{ij}\}$ considering both the spatial and temporal information.
+
+\subsection{Group-based Fraud Detection}
+Having obtained the fused embedding relations between users, the objective is to detect fraudsters involved in promotion abuse on the multi-relation fused homogeneous graph. 
+Fraudsters conduct fraudulent transactions in groups and exhibit high cohesion across multiple dimensions, which is reflected in the embeddings of the relations between users. Consequently, they form more condensed clusters in various dimensions on the graph compared to normal users.
+To discover this condensed characteristic, we propose a fraud detection algorithm based on a multi-relation fused homogeneous graph. The detection workflow comprises three main modules: attention-based feature aggregation for learning user representations, a semi-supervised autoencoder for detecting fraudster seeds and anomaly propagation for identifying fraudulent neighbors in the same group. 
+
+\noindent\textbf{Attention-based Node Feature Aggregation.} 
+This module takes the multi-relation fused homogeneous graph $\mathcal{G}$ as input. Its goal is to compute user node features $\mathbf{h}_i'$ based on fused relation embeddings, enabling clear distinctions between fraudulent and normal users. Fraudsters engaged in promotion abuse fraud often operate in groups and exhibit high cohesion across multiple dimensions. To capture this behavior, we employ a \ac{gnn} to aggregate features from neighboring nodes $\mathcal{N}(i)$.
+Since fraudsters are not always malicious, the influence of neighbors on a node's behavior varies. To address this, we use an attention mechanism to assign adaptive weights to neighbors, prioritizing those showing strong cohesion across dimensions. To better detect fraudulent behaviors regardless of promotion strategy, user node features are initialized as uniform vectors.
+The attention score $\alpha_{ij}$ between user $i$ and user $j$ is calculated based on the node feature $\mathbf{h}_i$ and their edge feature $\mathbf{f}_{ij}$. Node features are then aggregated using these attention scores, as follows:
+
+\begin{equation}
+    \alpha_{ij} = \frac{1}{l} \sum_{k = 1}^{l} \text{LeakyReLU}(\mathbf{h}_{i}\mathbf{W}_{k}(\mathbf{f}_{ij}\mathbf{W})^{T})
+\end{equation}
+
+\begin{equation}
+    \mathbf{h}_i' = \sum_{j \in \mathcal{N}(i)} \alpha_{ij} \mathbf{h}_j
+\end{equation}
+
+, where $\mathbf{W}_{k} \in \mathbb{R}^{D_{n} \times D_{a}}$ and $\mathbf{W} \in \mathbb{R}^{D_{e} \times D_{a}}$ are weight matrices, $D_{a}$ represents the attention size, and $l$ is the number of attention layers.
+
+
+\noindent\textbf{Semi-supervised AutoEncoder.}
+The aggregated node features $\mathbf{h}_i'$ are input to a semi-supervised autoencoder designed to identify fraudulent users.
+In real-world scenarios, user labels are often limited, with only a small proportion of users accurately labeled through manual inspection. Additionally, fraudsters may change their behaviors in response to changes in promotion strategies. To address these challenges, we use a semi-supervised autoencoder to guide training and maintain the model's generalization based on the fact that fraudsters are rare and most users are normal.
+The autoencoder consists of an encoder—a multi-layer perceptron mapping node features to a latent space—and a decoder that reconstructs node features $\mathbf{h}_i^*$ from the latent space. It is trained to minimize the reconstruction loss $l = ||\mathbf{h}_i' - \mathbf{h}_i^{*}||_{2}$. 
+
+
+The model's total loss comprises three components: the relation embedding loss $\mathcal{L}_{r}$ as defined in Equation~\ref{eqa:transr}, the reconstruction loss of the labeled users $\mathcal{L}_{l} = \mathrm{BCELoss}_{y_{i} \in \{0, 1\}}(y_{i}, l_{i})$ and the unlabeled users $\mathcal{L}_{u} = \mathrm{MSELoss}_{y_{i} = -1}(l_{i})$. The $\mathrm{BCELoss}$ is the binary cross-entropy (BCE) loss function and is defined as $\mathrm{BCELoss}(y, l) = -[ylogl + (1 - y)log(1-l)]$. The $\mathrm{MSELoss}$ is the mean squared error (MSE) loss function. 
+The total loss function is defined as:
+\begin{equation}
+    \mathcal{L} = \mathcal{L}_{r} + \mathcal{L}_{l} + \mathcal{L}_{u}
+\end{equation}
+
+The model is trained offline using transaction data from the most recent $T$ days (default $T=7$). Fraudsters are detected based on reconstruction losses, with the top $T_s=1.2\%$ reconstruction losses designated as fraudster seeds. The setting of $T_s$ is based on the observation that fraudsters are around 1.5\% in the production environment and we evaluate the performance of the model with different $T_s$ in Section~\ref{sec:rq4}.
+
+\noindent \textbf{Anomaly Propagation.} Although reconstruction-based anomaly detection is more generalizable than supervised methods, balancing precision and recall remains a challenge~\cite{10144292}. 
+Moreover, fraudsters within the same group may exhibit varying reconstruction losses due to differences in their neighbors, resulting in potential false negatives. 
+To address this limitation, we propose using fraudsters with high reconstruction errors as anomaly seeds and propagating anomalies on a multi-relation fused graph to identify additional fraudsters. 
+
+To enhance detection, we extend the fraudster seed set using an anomaly propagation strategy. Fraudsters typically exhibit strong cohesion across multiple dimensions. We quantify this cohesion using the attention score $\alpha_{ij}$ and the weight of each relation $w^{ij}_{r}$. 
+The propagation score between user $i$ and user $j$ is defined as:
+\begin{equation}
+    p_{ij} = \sum_{r = 1}^{|\mathcal R|} \alpha_{ij}*w^{ij}_{r}
+\end{equation}
+Using the propagation score, we identify fraudsters who exhibit high cohesion across multiple dimensions with the seed fraudsters. \fix{This propagation strategy computes scores in single pass using precomputed attention scores, enabling quick updates on \Company's production environment.}
+For each fraudster seed $i$, we compute $p_{ij}$; if $p_{ij}$ exceeds a threshold $T_p$, the user $j$ is classified as a fraudster within the same group. We also evaluate the performance of the model with different $T_p$ in Section~\ref{sec:rq4}.
+

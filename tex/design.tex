@@ -1,0 +1,131 @@
+\section{Design}
+\label{sec:design}
+
+In this section, we present the design of our hybrid defense system for detecting malicious behaviors embedded in model artifacts. We first formalize the problem setting and design goals of the system. Then we provide a high-level system overview and detail three core modules that jointly model (i) non-bypassable low-level system-call evidence and (ii) high-dimensional Python semantic context collected via non-invasive instrumentation. Finally, we discuss deployment considerations that enable practical and safe use in real-world analysis environments.
+
+\subsection{System Overview}
+
+\noindent \textbf{Input.} 
+The system takes a model artifact $M$ (e.g., a checkpoint/weights file, a serialized object, or a model package) and a controlled execution configuration $E$.
+
+\noindent \textbf{Observations.} During execution, we collect two synchronized streams:
+an application-layer semantic log stream $L=\{(\ell_i,t_i)\}$ from Python instrumentation, and
+a kernel-visible system-call stream $S=\{(s_j,\tau_j)\}$ from system-call tracing.
+
+\noindent \textbf{Output.} The system outputs a structured alert
+\begin{equation}
+A = \langle \textit{IntentScore},\; \textit{ThreatCategory},\; \textit{Context} \rangle,
+\end{equation}
+where $\textit{IntentScore}\in[0,1]$ reflects the likelihood of malicious intent, $\textit{ThreatCategory}$ is the predicted attack type, and $\textit{Context}$ is an evidence chain linking semantic context to low-level behaviors, which contains abnormal system-call operations and aligned high-level Python semantic events.
+
+\noindent \textbf{Goals.} Our design targets three goals: (G1) \emph{non-bypassability} via system-call evidence; (G2) \emph{low false positives and explainability} via semantic context; and (G3) \emph{efficiency and deployability} via fast prefiltering and lightweight instrumentation.
+
+Figure~\ref{fig:overview} illustrates three core modules of our system.
+
+\noindent \textbf{Module 1: } Kernel-level behavior extraction and prefiltering. We aggregate raw system calls into higher-level ``operations'' and use an Autoencoder to quickly identify abnormal operations. This module turns noisy, fine-grained traces into compact operation vectors and filters out clearly benign behavior, ensuring that only suspicious low-level activities are forwarded for deeper analysis.
+
+\noindent \textbf{Module 2:} Application-layer semantic instrumentation. We perform non-invasive, framework-adaptive Python instrumentation to capture high-dimensional semantic context around security-relevant API calls. This module logs which libraries and APIs are invoked, with what summarized arguments and in which execution phase, providing the semantic side of the evidence chain.
+
+\noindent \textbf{Module 3: } Cross-layer association and LLM reasoning. We align abnormal low-level operations with nearby semantic contexts, then ask an LLM to judge whether the behavior is explainable under benign model execution, producing an intent score and an evidence chain. This module links what the model code appears to be doing with what the operating system actually observes, and converts the combined evidence into a human-understandable alert.
+
+\begin{figure}[t]
+	\centering
+	% \includegraphics[width=0.95\columnwidth]{figs/overview.pdf}
+	\caption{System overview (placeholder): controlled model execution; dual-path logging (Python semantics and system calls); operation aggregation and Autoencoder prefiltering; cross-layer association; LLM-based intent reasoning; alert with evidence chain.}
+	\label{fig:overview}
+\end{figure}
+
+\subsection{Kernel-level Behavior Extraction and Prefiltering}
+The second module operates at the operating system level and is responsible for turning raw system-call traces into a small set of suspicious ``operations'' for further cross-layer analysis. Directly modeling single system calls is impractical because they are extremely fine-grained and voluminous, and because meaningful behavior  always manifests as a \emph{sequence} of related calls.
+
+\begin{table}[htbp]
+	\centering
+	\caption{Security-relevant system-call categories used by our filter.}
+	\begin{tabular}{l p{0.28\columnwidth} p{0.45\columnwidth}}
+		\hline
+		Filter param & Category & Purpose \\
+		\hline
+		file   & File operations (\texttt{read}/\texttt{write}) & Detect sensitive data leakage or configuration file tampering \\
+		network & Network operations (\texttt{socket}) & Detect data exfiltration or remote command execution \\
+		cred   & Credential operations (\texttt{setuid}) & Detect privilege-escalation behavior \\
+		desc   & Descriptor operations (\texttt{dup}) & Assist file-related anomaly detection \\
+		signal & Signal handling (\texttt{kill}) & Capture malicious process termination attempts \\
+		clock  & Time-related operations & Assist temporal anomaly analysis (e.g., abnormal delays) \\
+		\hline
+	\end{tabular}
+	\label{tab:syscalltypes}
+\end{table}
+
+\noindent \textbf{System-call collection and filtering.} During controlled model execution, we continuously trace system calls of the target process. To reduce noise and overhead, we immediately discard high-frequency but semantically uninformative calls such as scheduler hints, and we distinguish between inherently dangerous calls such as \texttt{execve} or privilege-changing operations, which are directly converted into operation vectors $\mathbf{v}_{\textit{dir}}$, and stateful calls such as \texttt{open}, \texttt{read}, \texttt{write} and \texttt{socket}, that must be interpreted over their full lifetime.
+Table~\ref{tab:syscalltypes} summarizes the security-relevant syscall families we monitor and their roles in our detection pipeline.
+
+We focus on these syscall families because they directly correspond to security-critical resources in the model execution environment: files and descriptors capture access to model weights and configuration files, network calls expose potential exfiltration and remote control channels, credential changes reveal attempts to escalate privileges, signals can be abused to disrupt monitoring or other processes, and time-related calls help characterize anomalous execution patterns such as staged or delayed attacks.\shaofei{list all the types of syscall that you used in a table. And explain why these syscalls are selected.}
+
+\noindent \textbf{Stateful aggregation.} Let $S = \{(s_k, \tau_k)\}_{k=1}^{N}$ denote the traced system-call stream, where $s_k$ is the $k$-th syscall and $\tau_k$ its timestamp. For stateful operations, we maintain per-resource state keyed by $r = \langle \textit{PID}, \textit{FD} \rangle$, where $\textit{FD}$ denotes a file or socket descriptor. For each key $r$, we collect the indices of calls that operate on this resource within one lifecycle segment,
+\begin{equation}
+	I_r = \{\, k \mid (s_k, \tau_k) \in S,\ s_k \text{ uses resource } r,\ \tau_{\textit{start}}^r \le \tau_k \le \tau_{\textit{end}}^r \,\},
+\end{equation}
+where $\tau_{\textit{start}}^r$ and $\tau_{\textit{end}}^r$ are the timestamps of the resource-acquisition and resource-release calls (e.g., \texttt{open} / \texttt{close} or \texttt{socket} / \texttt{shutdown}). The lifecycle segment for resource $r$ is then the ordered subsequence $S_r = \{(s_k, \tau_k)\}_{k \in I_r}$.
+
+We aggregate this segment into a fixed-length operation vector by applying a feature-extraction function $\phi$ over all calls in the segment:
+\begin{equation}
+	\mathbf{v}_{\textit{sys}}(r) = \phi(S_r) \in \mathbb{R}^{d},
+\end{equation}
+where $\phi$ computes lightweight statistics such as per-call-type counts, total bytes read and written, error-code distributions, and the duration $\tau_{\textit{end}}^r - \tau_{\textit{start}}^r$. Intuitively, each $\mathbf{v}_{\textit{sys}}(r)$ summarizes ``what happened to this particular file or connection'' during its lifetime, smoothing out scheduling artifacts and interleaving from other threads.\shaofei{formalize this part. use equation to define what is $V_{sys}$, need more details}
+
+Both direct operations $\mathbf{v}_{\textit{dir}}$ \shaofei{what is $V_{dir}$?} and aggregated operations $\mathbf{v}_{\textit{sys}}$ are encoded as fixed-length feature vectors. The feature set includes lightweight statistics such as per-call-type counts, total bytes read and written, error-code distributions, duration of the lifecycle segment, and simple flags describing access patterns (e.g., read-only vs. write-heavy, local vs. remote destination). The exact feature schema is configurable and can be extended to cover new behaviors, but is chosen so that benign model loading and inference exhibit a stable, learnable distribution, while malicious behaviors (e.g., spawning shells or exfiltrating secrets) produce outlier vectors.
+\shaofei{also formalize this part. I think this part can be merged with the previous one. }
+
+\noindent \textbf{Autoencoder-based anomaly detection.} To automatically distinguish normal and abnormal operations without relying on handcrafted signatures, we train an Autoencoder on operation vectors collected from clean model loading and inference runs. Given an operation vector $\mathbf{v}$, the Autoencoder computes a reconstruction error
+\begin{equation}
+E = \left\lVert \mathbf{v} - \textit{Dec}(\textit{Enc}(\mathbf{v})) \right\rVert_2^2,
+\end{equation}
+where \textit{Enc} and \textit{Dec} denote the encoder and decoder networks, respectively. Operations with reconstruction error $E$ below a threshold $\theta$ are treated as consistent with normal model behavior and are discarded. If $E > \theta$, we mark the corresponding operation as abnormal, retain its full underlying system-call segment $S'$ and metadata $\langle \textit{PID}, \textit{TID}, t_{\textit{start}}, t_{\textit{end}} \rangle$, and promote it to Module~3 for semantic association and intent reasoning.
+
+By performing this unsupervised prefiltering at the operation level, the system keeps the expensive cross-layer association and LLM reasoning off the critical path for the vast majority of benign activity, while still surfacing rare, suspicious low-level behaviors that deviate from the learned distribution of normal AI model execution.
+
+
+\subsection{Non-invasive Python Semantic Instrumentation}
+The goal of this module is to collect high-dimensional Python semantic context that explains why a model issues certain low-level operations. The resulting semantic log stream is later correlated with system calls to bridge the ``semantic gap'' between model-level intent and kernel-level behavior.
+
+\noindent \textbf{Data Collection} Each semantic event records process identifiers, a timestamp, the invoked function name and a compact argument summary:
+\begin{equation}
+\ell_i = \langle \textit{PID},\; \textit{TID},\; \textit{FuncName},\; \textit{ArgsSummary} \rangle.
+\end{equation}
+where $\textit{FuncName}$ typically corresponds to security-relevant framework or standard-library APIs. $\textit{ArgsSummary}$ aggregates only lightweight, non-sensitive information such as tensor shapes and dtypes, configuration flags, truncated or hashed file paths, and bounded-length string summaries. In addition to the immediate call, we optionally attach lightweight context (e.g., call-site stack summaries, library/module names, and execution phases such as load or inference) so that downstream modules can reconstruct an interpretable execution narrative.
+
+\noindent \textbf{LLM-assisted instrumentation.} Directly instrumenting heterogeneous AI frameworks is challenging because APIs and internal abstractions evolve rapidly. To avoid modifying model or framework source code, we rely on runtime monkey patching combined with LLM-assisted probe generation. Concretely, given a target library surface such as selected submodules of  TensorFlow and a security template describing classes of sensitive APIs, we prompt an LLM to synthesize a set of wrapper functions. Each wrapper logs a semantic event $\ell_i$ before delegating to the original callable, preserving the original control and data flow. The generated wrappers are organized as a small instrumentation script that is loaded alongside the model and applied via monkey patching at process startup.\shaofei{this part need more details. what's your prompt? how do you select the API? how you automate the instrumentation?}
+
+The instrumentation is designed to be adaptive: when the underlying framework version changes, we only need to regenerate the wrappers for the new API surface, without changing the core detection pipeline. This enables broad coverage across diverse model frameworks while keeping manual engineering effort low.
+
+\noindent \textbf{Safety constraints.} To reduce the risk of breaking runtime behavior, the instrumentation follows a conservative policy. First, we only wrap callable functions and avoid replacing class definitions, built-in data types, or objects backed by low-level C/C++ bindings. Second, wrappers are kept as thin as possible: they perform best-effort argument summarization and then immediately invoke the original function, without altering return values or side effects. Third, the parameter serialization adopts defensive strategies to control logging overhead by recording only shapes instead of raw tensor contents, truncating long strings, and other similar methods. Finally, logging itself is failure-tolerant: if summarization or emission fails, the wrapper falls back to executing the original function without logging, ensuring that instrumentation never blocks or crashes model execution.
+
+\subsection{Cross-layer Spatio-temporal Association}
+The third module receives abnormal operations reported by Module~2 and associates them with high-dimensional Python semantic context from Module~1. Its primary goal is to determine whether each abnormal low-level operation can be reasonably explained as benign model behavior; only for operations that remain suspicious do we further construct a coherent cross-layer behavior profile that explains which model code triggered them and why they may be malicious.
+
+System calls and Python semantics are inherently asynchronous due to OS scheduling and concurrent I/O. As a result, naive one-to-one timestamp matching between logs $S$ and $L$ is unreliable in high-concurrency workloads. We therefore adopt a fuzzy spatio-temporal association strategy.
+
+For each abnormal operation, Module~2 provides the underlying system-call segment $S'$ and its metadata $\langle \textit{PID}, \textit{TID}, t_{\textit{start}}, t_{\textit{end}} \rangle$. Given this metadata and the semantic log stream $L = \{(\ell_i, t_i)\}$, Module~3 first retrieves candidate semantic events that could have triggered the operation. Concretely, we treat $\langle \textit{PID}, \textit{TID} \rangle$ as a primary key and restrict attention to semantic events from the same process and, when available, the same thread.
+
+\noindent \textbf{Temporal windowing.} We then apply a slack temporal window around the abnormal operation. For each candidate abnormal operation, we define its active time span $[t_{\textit{start}}, t_{\textit{end}}]$ based on the first and last system call in $S'$, and search semantic events whose timestamps $t_i$ fall into an expanded window $[t_{\textit{start}} - \Delta t, t_{\textit{end}} + \Delta t]$. The slack parameter $\Delta t$ tolerates minor scheduling jitter while still localizing semantic context to the period when the resource was actually in use.
+
+\noindent \textbf{Spatial hints.} Temporal proximity alone is insufficient under heavy concurrency. We therefore further filter candidates using resource-related hints derived from both layers, such as whether the operation is file- or network-related, file paths or prefixes, remote destinations, and other descriptor metadata when available. Combining temporal and spatial constraints yields a fuzzy but robust alignment that significantly reduces spurious associations when many model components execute in parallel.
+
+\noindent \textbf{Cross-layer behavior profile.} After spatio-temporal filtering, Module~3 bundles the abnormal operation vector, its raw system-call summary, and the aligned semantic events into a structured cross-layer behavior profile. This profile serves as the input to the LLM-based intent reasoning stage: it contains (i) what the OS observed at the system-call level, (ii) which high-level Python APIs and call sites were active around that time and on the same resource, and (iii) basic execution-phase information (e.g., load vs. inference). Together, these elements provide sufficient context to decide whether the abnormal low-level behavior is consistent with benign model execution or indicative of malicious intent.
+
+\subsection{LLM-based Intent Reasoning and Evidence Chain Generation}
+Given an abnormal low-level operation and its aligned semantic contexts, the LLM decides whether the behavior is consistent with benign model execution.
+
+\noindent \textbf{Prompt construction.} We translate the aligned evidence into a structured natural-language prompt that includes: (i) a concise summary of the abnormal operation (operation type, key statistics, and risk-relevant parameters), (ii) the aligned semantic call contexts (library/API, call stack summary, and argument summaries), and (iii) the execution phase.
+
+\noindent \textbf{Decision and explanation.} The LLM outputs $\textit{IntentScore}$, a $\textit{ThreatCategory}$ label, and a rationale. Importantly, we persist the subset of semantic events and system-call summaries used in the reasoning as the \emph{evidence chain} $\textit{Context}$ for auditing.
+
+\noindent \textbf{Fail-safe behavior.} If high-risk system-call patterns appear without any plausible semantic explanation (e.g., sensitive network connection with no corresponding high-level network API context), the system raises a high-severity alert and can optionally block execution in the controlled environment.
+
+\subsection{Deployment Considerations}
+\noindent \textbf{Controlled execution.} The design assumes model analysis runs in a controlled environment with least privilege and optional network isolation, so that confirmed malicious behaviors can be contained.
+
+\noindent \textbf{Privacy.} Semantic logs should avoid raw secrets; argument summaries can be redacted or hashed. The evidence chain is designed to be informative for security auditing while minimizing sensitive exposure.
+
+\noindent \textbf{Extensibility.} The instrumentation templates can be expanded as new framework APIs emerge; similarly, operation features can be extended to cover new low-level behaviors without changing the overall pipeline.
+
