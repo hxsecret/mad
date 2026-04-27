@@ -1,61 +1,343 @@
-@article{b1,
-  author = {G. Eason and B. Noble and I. N. Sneddon},
-  title = {On certain integrals of Lipschitz-Hankel type involving products of Bessel functions},
-  journal = {Phil. Trans. Roy. Soc. London},
-  volume = {A247},
-  pages = {529--551},
-  year = {1955},
-  month = {April}
+
+% Journals
+
+% First the Full Name is given, then the abbreviation used in the AMS Math
+% Reviews, with an indication if it could not be found there.
+% Note the 2nd overwrites the 1st, so swap them if you want the full name.
+
+ %{AMS}
+ @String{AMSTrans = "American Mathematical Society Translations" }
+ @String{AMSTrans = "Amer. Math. Soc. Transl." }
+ @String{BullAMS = "Bulletin of the American Mathematical Society" }
+ @String{BullAMS = "Bull. Amer. Math. Soc." }
+ @String{ProcAMS = "Proceedings of the American Mathematical Society" }
+ @String{ProcAMS = "Proc. Amer. Math. Soc." }
+ @String{TransAMS = "Transactions of the American Mathematical Society" }
+ @String{TransAMS = "Trans. Amer. Math. Soc." }
+
+ %ACM
+ @String{CACM = "Communications of the {ACM}" }
+ @String{CACM = "Commun. {ACM}" }
+ @String{CompServ = "Comput. Surveys" }
+ @String{JACM = "J. ACM" }
+ @String{ACMMathSoft = "{ACM} Transactions on Mathematical Software" }
+ @String{ACMMathSoft = "{ACM} Trans. Math. Software" }
+ @String{SIGNUM = "{ACM} {SIGNUM} Newsletter" }
+ @String{SIGNUM = "{ACM} {SIGNUM} Newslett." }
+
+ @String{AmerSocio = "American Journal of Sociology" }
+ @String{AmerStatAssoc = "Journal of the American Statistical Association" }
+ @String{AmerStatAssoc = "J. Amer. Statist. Assoc." }
+ @String{ApplMathComp = "Applied Mathematics and Computation" }
+ @String{ApplMathComp = "Appl. Math. Comput." }
+ @String{AmerMathMonthly = "American Mathematical Monthly" }
+ @String{AmerMathMonthly = "Amer. Math. Monthly" }
+ @String{BIT = "{BIT}" }
+ @String{BritStatPsych = "British Journal of Mathematical and Statistical
+          Psychology" }
+ @String{BritStatPsych = "Brit. J. Math. Statist. Psych." }
+ @String{CanMathBull = "Canadian Mathematical Bulletin" }
+ @String{CanMathBull = "Canad. Math. Bull." }
+ @String{CompApplMath = "Journal of Computational and Applied Mathematics" }
+ @String{CompApplMath = "J. Comput. Appl. Math." }
+ @String{CompPhys = "Journal of Computational Physics" }
+ @String{CompPhys = "J. Comput. Phys." }
+ @String{CompStruct = "Computers and Structures" }
+ @String{CompStruct = "Comput. \& Structures" }
+ @String{CompJour = "The Computer Journal" }
+ @String{CompJour = "Comput. J." }
+ @String{CompSysSci = "Journal of Computer and System Sciences" }
+ @String{CompSysSci = "J. Comput. System Sci." }
+ @String{Computing = "Computing" }
+ @String{ContempMath = "Contemporary Mathematics" }
+ @String{ContempMath = "Contemp. Math." }
+ @String{Crelle = "Crelle's Journal" }
+ @String{GiornaleMath = "Giornale di Mathematiche" }
+ @String{GiornaleMath = "Giorn. Mat." } % didn't find in AMS MR., ibid.
+
+ %IEEE
+ @String{Computer = "{IEEE} Computer" }
+ @String{IEEETransComp = "{IEEE} Transactions on Computers" }
+ @String{IEEETransComp = "{IEEE} Trans. Comput." }
+ @String{IEEETransAC = "{IEEE} Transactions on Automatic Control" }
+ @String{IEEETransAC = "{IEEE} Trans. Automat. Control" }
+ @String{IEEESpec = "{IEEE} Spectrum" } % didn't find in AMS MR
+ @String{ProcIEEE = "Proceedings of the {IEEE}" }
+ @String{ProcIEEE = "Proc. {IEEE}" } % didn't find in AMS MR
+ @String{IEEETransAeroElec = "{IEEE} Transactions on Aerospace and Electronic
+     Systems" }
+ @String{IEEETransAeroElec = "{IEEE} Trans. Aerospace Electron. Systems" }
+
+ @String{IMANumerAna = "{IMA} Journal of Numerical Analysis" }
+ @String{IMANumerAna = "{IMA} J. Numer. Anal." }
+ @String{InfProcLet = "Information Processing Letters" }
+ @String{InfProcLet = "Inform. Process. Lett." }
+ @String{InstMathApp = "Journal of the Institute of Mathematics and
+     its Applications" }
+ @String{InstMathApp = "J. Inst. Math. Appl." }
+ @String{IntControl = "International Journal of Control" }
+ @String{IntControl = "Internat. J. Control" }
+ @String{IntNumerEng = "International Journal for Numerical Methods in
+     Engineering" }
+ @String{IntNumerEng = "Internat. J. Numer. Methods Engrg." }
+ @String{IntSuper = "International Journal of Supercomputing Applications" }
+ @String{IntSuper = "Internat. J. Supercomputing Applic." } % didn't find
+%% in AMS MR
+ @String{Kibernetika = "Kibernetika" }
+ @String{JResNatBurStand = "Journal of Research of the National Bureau
+     of Standards" }
+ @String{JResNatBurStand = "J. Res. Nat. Bur. Standards" }
+ @String{LinAlgApp = "Linear Algebra and its Applications" }
+ @String{LinAlgApp = "Linear Algebra Appl." }
+ @String{MathAnaAppl = "Journal of Mathematical Analysis and Applications" }
+ @String{MathAnaAppl = "J. Math. Anal. Appl." }
+ @String{MathAnnalen = "Mathematische Annalen" }
+ @String{MathAnnalen = "Math. Ann." }
+ @String{MathPhys = "Journal of Mathematical Physics" }
+ @String{MathPhys = "J. Math. Phys." }
+ @String{MathComp = "Mathematics of Computation" }
+ @String{MathComp = "Math. Comp." }
+ @String{MathScand = "Mathematica Scandinavica" }
+ @String{MathScand = "Math. Scand." }
+ @String{TablesAidsComp = "Mathematical Tables and Other Aids to Computation" }
+ @String{TablesAidsComp = "Math. Tables Aids Comput." }
+ @String{NumerMath = "Numerische Mathematik" }
+ @String{NumerMath = "Numer. Math." }
+ @String{PacificMath = "Pacific Journal of Mathematics" }
+ @String{PacificMath = "Pacific J. Math." }
+ @String{ParDistComp = "Journal of Parallel and Distributed Computing" }
+ @String{ParDistComp = "J. Parallel and Distrib. Comput." } % didn't find
+%% in AMS MR
+ @String{ParComputing = "Parallel Computing" }
+ @String{ParComputing = "Parallel Comput." }
+ @String{PhilMag = "Philosophical Magazine" }
+ @String{PhilMag = "Philos. Mag." }
+ @String{ProcNAS = "Proceedings of the National Academy of Sciences
+                    of the USA" }
+ @String{ProcNAS = "Proc. Nat. Acad. Sci. U. S. A." }
+ @String{Psychometrika = "Psychometrika" }
+ @String{QuartMath = "Quarterly Journal of Mathematics, Oxford, Series (2)" }
+ @String{QuartMath = "Quart. J. Math. Oxford Ser. (2)" }
+ @String{QuartApplMath = "Quarterly of Applied Mathematics" }
+ @String{QuartApplMath = "Quart. Appl. Math." }
+ @String{RevueInstStat = "Review of the International Statisical Institute" }
+ @String{RevueInstStat = "Rev. Inst. Internat. Statist." }
+
+ %SIAM
+ @String{JSIAM = "Journal of the Society for Industrial and Applied
+     Mathematics" }
+ @String{JSIAM = "J. Soc. Indust. Appl. Math." }
+ @String{JSIAMB = "Journal of the Society for Industrial and Applied
+     Mathematics, Series B, Numerical Analysis" }
+ @String{JSIAMB = "J. Soc. Indust. Appl. Math. Ser. B Numer. Anal." }
+ @String{SIAMAlgMeth = "{SIAM} Journal on Algebraic and Discrete Methods" }
+ @String{SIAMAlgMeth = "{SIAM} J. Algebraic Discrete Methods" }
+ @String{SIAMAppMath = "{SIAM} Journal on Applied Mathematics" }
+ @String{SIAMAppMath = "{SIAM} J. Appl. Math." }
+ @String{SIAMComp = "{SIAM} Journal on Computing" }
+ @String{SIAMComp = "{SIAM} J. Comput." }
+ @String{SIAMMatrix = "{SIAM} Journal on Matrix Analysis and Applications" }
+ @String{SIAMMatrix = "{SIAM} J. Matrix Anal. Appl." }
+ @String{SIAMNumAnal = "{SIAM} Journal on Numerical Analysis" }
+ @String{SIAMNumAnal = "{SIAM} J. Numer. Anal." }
+ @String{SIAMReview = "{SIAM} Review" }
+ @String{SIAMReview = "{SIAM} Rev." }
+ @String{SIAMSciStat = "{SIAM} Journal on Scientific and Statistical
+     Computing" }
+ @String{SIAMSciStat = "{SIAM} J. Sci. Statist. Comput." }
+
+ @String{SoftPracExp = "Software Practice and Experience" }
+ @String{SoftPracExp = "Software Prac. Experience" } % didn't find in AMS MR
+ @String{StatScience = "Statistical Science" }
+ @String{StatScience = "Statist. Sci." }
+ @String{Techno = "Technometrics" }
+ @String{USSRCompMathPhys = "{USSR} Computational Mathematics and Mathematical
+     Physics" }
+ @String{USSRCompMathPhys = "{U. S. S. R.} Comput. Math. and Math. Phys." }
+ @String{VLSICompSys = "Journal of {VLSI} and Computer Systems" }
+ @String{VLSICompSys = "J. {VLSI} Comput. Syst." }
+ @String{ZAngewMathMech = "Zeitschrift fur Angewandte Mathematik und
+     Mechanik" }
+ @String{ZAngewMathMech = "Z. Angew. Math. Mech." }
+ @String{ZAngewMathPhys = "Zeitschrift fur Angewandte Mathematik und Physik" }
+ @String{ZAngewMathPhys = "Z. Angew. Math. Phys." }
+
+% Publishers % ================================================= |
+
+ @String{Academic = "Academic Press" }
+ @String{ACMPress = "{ACM} Press" }
+ @String{AdamHilger = "Adam Hilger" }
+ @String{AddisonWesley = "Addison-Wesley" }
+ @String{AllynBacon = "Allyn and Bacon" }
+ @String{AMS = "American Mathematical Society" }
+ @String{Birkhauser = "Birkh{\"a}user" }
+ @String{CambridgePress = "Cambridge University Press" }
+ @String{Chelsea = "Chelsea" }
+ @String{ClaredonPress = "Claredon Press" }
+ @String{DoverPub = "Dover Publications" }
+ @String{Eyolles = "Eyolles" }
+ @String{HoltRinehartWinston = "Holt, Rinehart and Winston" }
+ @String{Interscience = "Interscience" }
+ @String{JohnsHopkinsPress = "The Johns Hopkins University Press" }
+ @String{JohnWileySons = "John Wiley and Sons" }
+ @String{Macmillan = "Macmillan" }
+ @String{MathWorks = "The Math Works Inc." }
+ @String{McGrawHill = "McGraw-Hill" }
+ @String{NatBurStd = "National Bureau of Standards" }
+ @String{NorthHolland = "North-Holland" }
+ @String{OxfordPress = "Oxford University Press" }  %address Oxford or London?
+ @String{PergamonPress = "Pergamon Press" }
+ @String{PlenumPress = "Plenum Press" }
+ @String{PrenticeHall = "Prentice-Hall" }
+ @String{SIAMPub = "{SIAM} Publications" }
+ @String{Springer = "Springer-Verlag" }
+ @String{TexasPress = "University of Texas Press" }
+ @String{VanNostrand = "Van Nostrand" }
+ @String{WHFreeman = "W. H. Freeman and Co." }
+
+%Entries
+@misc{huggingface,
+	title= {Hugging Face – The AI community building the future.},
+	note = {https://huggingface.co/},
+	author={Hugging Face},
+	year=2025
 }
 
-@book{b2,
-  author = {J. Clerk Maxwell},
-  title = {A Treatise on Electricity and Magnetism},
-  edition = {3rd},
-  volume = {2},
-  publisher = {Oxford: Clarendon},
-  year = {1892},
-  pages = {68--73}
+@misc{github,
+	title= {GitHub · Change is constant. GitHub keeps you ahead.},
+	note = {https://github.com/},
+	author={Github},
+	year=2025
+}
+@misc{casey2024largescaleexploitinstrumentationstudy,
+      title={A Large-Scale Exploit Instrumentation Study of AI/ML Supply Chain Attacks in Hugging Face Models}, 
+      author={Beatrice Casey and Joanna C. S. Santos and Mehdi Mirakhorli},
+      year={2024},
+      eprint={2410.04490},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2410.04490}, 
+}
+@inproceedings{modelscan,
+  title={ModelScan: Protection against Model Serialization Attacks},
+  author={protectai},
+  year={2024},
+  url={https://github.com/protectai/modelscan}
+}
+@misc{fickling,
+      author = {ESultanik},
+      title = {fickling},
+      year = {2021},
+      url = {https://github.com/trailofbits/fickling},
+      note = {Access：2025}
+}
+@misc{picklescanning,
+      author = {Hugging Face.},
+      title = {Pickle Scanning},
+      year = {2024},
+      url = {https://huggingface.co/docs/hub/security-pickle#pickle-scanning},
+      note = {Access：2025}
 }
 
-@incollection{b3,
-  author = {I. S. Jacobs and C. P. Bean},
-  title = {Fine particles, thin films and exchange anisotropy},
-  booktitle = {Magnetism},
-  editor = {G. T. Rado and H. Suhl},
-  volume = {III},
-  publisher = {New York: Academic},
-  year = {1963},
-  pages = {271--350}
+@INPROCEEDINGS {zhu2025,
+author = { Zhu, Ruofan and Chen, Ganhao and Shen, Wenbo and Xie, Xiaofei and Chang, Rui },
+booktitle = { 2025 IEEE Symposium on Security and Privacy (SP) },
+title = {{ My Model is Malware to You: Transforming AI Models into Malware by Abusing TensorFlow APIs }},
+year = {2025},
+volume = {},
+ISSN = {2375-1207},
+pages = {449-466},
+abstract = { The rapid advancement of AI technologies has significantly increased the demand for AI models across various industries. While model sharing reduces costs and fosters innovation, it also introduces security risks, as attackers can embed malicious code within models, leading to potential undetected attacks when running the model. Despite these risks, the security of model sharing, particularly for TensorFlow, remains under-investigated. To address these security concerns, we present a systematic analysis of the security risks associated with TensorFlow APIs. We introduce the TensorAbuse attack, which exploits hidden capabilities of TensorFlow APIs, such as file access and network messaging, to construct powerful and stealthy attacks. To facilitate this, we developed two novel techniques: one for identifying persistent APIs in TensorFlow and another for leveraging large language models to accurately analyze and classify API capabilities. We applied these techniques to TensorFlow v2.15.0 and identified 1,083 persistent APIs with five main capabilities. We exploited 20 of these APIs to develop five attack primitives and four synthetic attacks, including file leak, IP exposure, arbitrary code execution, and shell access. Our tests revealed that Hugging Face, TensorFlow Hub, and ModelScan could not detect any of these attacks. We have reported these findings to Google, Hugging Face, and ModelScan, and are currently working with them to address these issues. },
+keywords = {ai model attack;tensorflow api;capability abuse},
+doi = {10.1109/SP61157.2025.00012},
+url = {https://doi.ieeecomputersociety.org/10.1109/SP61157.2025.00012},
+publisher = {IEEE Computer Society},
+address = {Los Alamitos, CA, USA},
+month =May}
+
+@INPROCEEDINGS{10656658,
+  author={Wu, Han and Ou, Guanyan and Wu, Weibin and Zheng, Zibin},
+  booktitle={2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 
+  title={Improving Transferable Targeted Adversarial Attacks with Model Self-Enhancement}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={24615-24624},
+  keywords={Training;Computer vision;Codes;Perturbation methods;Design methodology;Closed box;Robustness},
+  doi={10.1109/CVPR52733.2024.02324}}
+
+@misc{chen2025generalizabletargeteddatapoisoning,
+      title={Generalizable Targeted Data Poisoning against Varying Physical Objects}, 
+      author={Zhizhen Chen and Zhengyu Zhao and Subrat Kishore Dutta and Chenhao Lin and Chao Shen and Xiao Zhang},
+      year={2025},
+      eprint={2412.03908},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2412.03908}, 
 }
 
-@unpublished{b4,
-  author = {K. Elissa},
-  title = {Title of paper if known},
-  note = {unpublished}
+
+@inproceedings{Crowdroid,
+author = {Burguera, Iker and Zurutuza, Urko and Nadjm-Tehrani, Simin},
+year = {2011},
+month = {10},
+pages = {15-26},
+title = {Crowdroid: Behavior-Based Malware Detection System for Android},
+isbn = {9781450310000},
+journal = {SPSM '11},
+doi = {10.1145/2046614.2046619}
 }
 
-@article{b5,
-  author = {R. Nicole},
-  title = {Title of paper with only first word capitalized},
-  journal = {J. Name Stand. Abbrev.},
-  note = {in press}
+@InProceedings{978364235267617,
+author="Amamra, Abdelfattah
+and Talhi, Chamseddine
+and Robert, Jean-Marc
+and Hamiche, Martin",
+editor="Kim, Tai-hoon
+and Ramos, Carlos
+and Kim, Haeng-kon
+and Kiumi, Akingbehin
+and Mohammed, Sabah
+and {\'{S}}l{\k{e}}zak, Dominik",
+title="Enhancing Smartphone Malware Detection Performance by Applying Machine Learning Hybrid Classifiers",
+booktitle="Computer Applications for Software Engineering, Disaster Recovery, and Business Continuity",
+year="2012",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="131--137",
+abstract="Significant increase and serious thread of Smartphone malwares has imposed adopting accurate malware detection solutions. In this paper, we investigate the performance of machine learning individual classifiers and the possibility of enhancing this performance by introducing hybrid classifiers using stacking method. For the purpose of malware detection on Smartphone, the classifiers are evaluated and tested on 100 most download normal free applications and 90 available malicious applications traces. Those applications have been installed and executed on a HTC Dream phone. The metrics used to measure the classifiers performance are classifier accuracy and false positive rate.",
+isbn="978-3-642-35267-6"
 }
 
-@article{b6,
-  author = {Y. Yorozu and M. Hirano and K. Oka and Y. Tagawa},
-  title = {Electron spectroscopy studies on magneto-optical media and plastic substrate interface},
-  journal = {IEEE Transl. J. Magn. Japan},
-  volume = {2},
-  pages = {740--741},
-  year = {1987},
-  month = {August},
-  note = {Digests 9th Annual Conf. Magnetics Japan, p. 301, 1982}
+@article{sec.1555,
+author = {Amamra, Abdelfattah and Robert, Jean-Marc and Abraham, Andrien and Talhi, Chamseddine},
+title = {Generative versus discriminative classifiers for android anomaly-based detection system using system calls filtering and abstraction process},
+journal = {Security and Communication Networks},
+volume = {9},
+number = {16},
+pages = {3483-3495},
+keywords = {anomaly detection, android security, system calls, filtering and abstraction, generative machine learning classifiers, discriminative machine learning classifiers, support vector machine, k-means clustering},
+doi = {https://doi.org/10.1002/sec.1555},
+url = {https://onlinelibrary.wiley.com/doi/abs/10.1002/sec.1555},
+eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/sec.1555},
+abstract = {Abstract Anomaly-based detection techniques have been widely studied in recent years. Most of these efforts have focused to improve the accuracy of these techniques. The poor accuracy performance is caused by two factors: (i) the data used for the analysis is insufficient and/or unrepresentative of the application behavior, or (ii) inappropriate algorithms are used to model the behavior of the application. In this paper, we attempt to improve anomaly-based detection techniques by examining these two factors. First, we use system call filtering and abstraction process. This process refines the system call traces. The refined traces are compact and should be more representative of the application main behavior. Second, we use machine learning classifiers to characterize the benign behavior. Generally, there are two main categories of machine learning classifiers: generative classifiers and discriminative classifiers. In their initial training phases, the classifiers build models characterizing the benign behavior. Later on, these models are used to distinguish between different classes of data. They are simply defined by their parameters. The k-means classifier is considered as a representative of the generative classifier category, and the support vector machine classifier as a representative of the discriminative classifier category. The efficiency of these classifiers are reviewed and compared, as well as the impact of the filtering and abstraction process on their performances is evaluated. The experimental results show that the support vector machine model outperforms the k-means model, and the filtering and abstraction process has positive impacts on the performance of both models. Copyright © 2016 John Wiley \& Sons, Ltd.},
+year = {2016}
 }
 
-@book{b7,
-  author = {M. Young},
-  title = {The Technical Writer's Handbook},
-  publisher = {Mill Valley, CA: University Science},
-  year = {1989}
+@misc{deepseekleak,
+      author = {G. Baran},
+      title = {DeepSeek Data Leak – 12,000 Hardcoded Live API keys and Passwords
+Exposed.},
+      year = {2024},
+      url = {https://cybersecuritynews.com/deepseek-data-leak-api-keysand-passwords/},
+      note = {Access：2025}
+}
+
+@misc{huggingfacevulnerability,
+      author = {R. Lakshmanan},
+      title = {New Hugging Face Vulnerability Exposes AI Models to Supply Chain
+Attacks.},
+      year = {2024},
+      url = {ttps://thehackernews.com/2024/02/new-hugging-facevulnerability-exposes.html},
+      note = {Access：2025}
 }
