@@ -1,0 +1,414 @@
+\section{Evaluation}\label{sec:evaluation}
+We evaluate the performance of \toolname in detecting promotion abuse fraudsters in e-commerce platforms of \Company. We compare \toolname with five group-based fraud detection baselines: GraphSAGE~\cite{10.5555/3294771.3294869}, FRAUDAR~\cite{hooi2016fraudar}, GFDN~\cite{yu2023group}, COFRAUD~\cite{zang2023don}, and DiG-In-GNN~\cite{zhang2024dig}. We evaluate the performance of \toolname and the baseline methods on a publicly accessible dataset \ac{ppa}. We also deploy \toolname and baselines in the production environment of \Company. To evaluate the effectiveness of \toolname, we propose the following four research questions:
+
+\begin{itemize}[noitemsep, topsep=1pt, partopsep=1pt, listparindent=\parindent, leftmargin=*]
+% \begin{itemize}
+    \item \textbf{RQ1:} Can \toolname effectively detect promotion abuse fraudsters in e-commerce platforms?
+    \item \textbf{RQ2:} What are the main causes of false positives and false negatives in \toolname's detection of promotion abuse fraudsters?  
+    \item \textbf{RQ3:} How does \toolname perform in real-world deployment?
+    \item \textbf{RQ4:} How does each part of \toolname contribute to the detection performance?
+    % \item \textbf{RQ5:} How do hyperparameters affect the detection performance of \toolname?
+\end{itemize}
+
+
+
+
+% Amazon~\cite{10.1145/2488388.2488466} and Yelp~\cite{10.1145/2783258.2783370} are widely used in the fraud detection research~\cite{zang2023don, zhang2024dig, 10.1145/3340531.3411903,10.1145/3442381.3449989}. The primary fraudulent activity in these datasets is review fraud, where fraudsters post fake reviews to promote or demote products. The Amazon dataset is derived from product reviews on Amazon.com and includes three types of user relations: U-P-U (users who have reviewed at least one shared product), U-S-U (users who assigned identical star ratings within a week), U-V-U (users with mutual review similarity ranking in the top 5\%). 
+% The Yelp dataset, on the other hand, is based on reviews of restaurants and hotels on Yelp.com and comprises three types of relations: R-U-R (reviews written by the same user), R-S-R (reviews with the same star rating for a single product), R-T-R (reviews of the same product submitted during the same month).
+
+
+% \begin{table}[t!]
+%     \scriptsize
+%     \centering
+%     \caption{Statistics information of different datasets.}
+%     \resizebox{0.48\textwidth}{!}{\begin{tblr}{
+%         colspec={X[r, wd = 1cm] c c c c},
+%         cell{1}{1-5} = {c},
+%         cell{2-15}{1} = {l},
+%         cell{2-15}{2-5} = {r},
+%         hline{1,16} = {1pt},
+%         vline{2,3,4,5},
+%         stretch=0
+%     }
+%     \SetCell[r = 1, c = 1]{c} \textbf{Dataset} & \SetCell[r = 1, c = 1]{c} \textbf{Users} & \SetCell[r = 1, c = 1]{c} \textbf{Fraudsters} & \SetCell[r = 1, c = 1]{c} \textbf{Relations} & \SetCell[r = 1, c = 1]{c} \textbf{Edges} \\ \hline
+%     \SetCell[r = 3, c = 1]{c} \textbf{Amazon} & \SetCell[r = 3, c = 1]{} 11,944  & \SetCell[r = 3, c = 1]{} 9.5\% &  \SetCell[r = 1, c = 1]{c} U-P-U& \SetCell[r = 1, c = 1]{} 175,608\\
+%      &  &  & \SetCell[r = 1, c = 1]{c} U-S-U & \SetCell[r = 1, c = 1]{} 3,566,479 \\
+%      &  &  & \SetCell[r = 1, c = 1]{c} U-V-U & \SetCell[r = 1, c = 1]{} 1,036,737 \\\hline
+%     \SetCell[r = 3, c = 1]{c} \textbf{Yelp} & \SetCell[r = 3, c = 1]{}  45,954  & \SetCell[r = 3, c = 1]{} 14.5\% & \SetCell[r = 1, c = 1]{c}  R-U-R  & \SetCell[r = 1, c = 1]{} 49,315 \\
+%     &  &  & \SetCell[r = 1, c = 1]{c} R-T-R &\SetCell[r = 1, c = 1]{} 573,616 \\
+%     &  &  & \SetCell[r = 1, c = 1]{c} R-S-R & \SetCell[r = 1, c = 1]{} 3,402,743 \\\hline
+%     \SetCell[r = 8, c = 1]{c} \textbf{\ac{ppa}} & \SetCell[r = 8, c = 1]{} 5,693,351  & \SetCell[r = 8, c = 1]{} 2.16\% &  \SetCell[r = 1, c = 1]{c} $r_{1}$ & \SetCell[r = 1, c = 1]{} 1,159,257\\
+%      \textbf{Promotion}&  &  & \SetCell[r = 1, c = 1]{c} $r_{2}$ & \SetCell[r = 1, c = 1]{}  173,029\\
+%      \textbf{Abuse}&  &  & \SetCell[r = 1, c = 1]{c} $r_{3}$ & \SetCell[r = 1, c = 1]{} 8,824 \\
+%     &  &  & \SetCell[r = 1, c = 1]{c} $r_{4}$ & \SetCell[r = 1, c = 1]{} 7,937,295 \\
+%     &  &  & \SetCell[r = 1, c = 1]{c} $r_{5}$ & \SetCell[r = 1, c = 1]{} 211,150 \\
+%     &  &  & \SetCell[r = 1, c = 1]{c} $r_{6}$ & \SetCell[r = 1, c = 1]{}  15,826,572\\
+%     &  &  & \SetCell[r = 1, c = 1]{c} $r_{7}$ & \SetCell[r = 1, c = 1]{} 1,655,738 \\
+%     &  &  & \SetCell[r = 1, c = 1]{c} $r_{8}$ & \SetCell[r = 1, c = 1]{}  3,006,006\\
+
+% \end{tblr} }
+% \label{tab:publicdataset}
+% \end{table}
+
+
+\subsection{Experiment Setup}
+In this section, we introduce the experiment setup, including the dataset usage, baselines, and the implementation and deployment of \toolname.
+
+
+\noindent \textbf{Dataset Usage.} 
+We evaluate the performance of \toolname and the baseline methods using datasets from \Company. For publicly accessible evaluation, we evaluate on the \ac{ppa}. The statistics of \ac{ppa} are shown in Table~\ref{tab:publicdataset}. The first week of the dataset is used for training and validation, while the second week is reserved for testing. The dataset and documentation are publicly available at \url{https://osf.io/rasje/?view_only=671050154acf4c0fa6b86a9337e74c2c}.
+For large-scale evaluation, we deployed \toolname in the production environment of \Company and collected the statistics for one week. For each day, we detect the fraudsters using the transaction data of its previous week. 
+
+
+\noindent \textbf{Baseline.} We select five graph-based fraud detection methods as baselines, including FRAUDAR~\cite{hooi2016fraudar}, GFDN~\cite{yu2023group}, COFRAUD~\cite{zang2023don} and DiG-In-GNN~\cite{zhang2024dig}, GraphSAGE~\cite{10.5555/3294771.3294869}. These methods include state-of-the-art graph-based models for fraud detection and traditional \ac{gnn} models.
+
+For GraphSAGE and DiG-In-GNN, they require node features as input. Therefore, we initialize the node features as a 12-dimensional feature vector about the user's transaction behavior during the recent week, including the number of transactions, the kinds of products, the number of products, etc. 
+For GraphSAGE, we merge the multi-relation graph into a homogeneous graph to learn the node embeddings and use the same semi-supervised autoencoder to detect the fraudsters. For DiG-In-GNN, it only supports three types of relations. Therefore, we only consider the top three relations with the highest proportions, including $r_4$, $r_6$ and $r_8$. For FRAUDAR, GFDN and COFRAUD, we use the open-source implementation provided by the authors. Due to the large scale of the dataset, we set the $\alpha_{\tau}^{+} = \alpha_{\tau}^{-} = 4, \beta_{\tau}^{-} = 1, \beta_{\tau}^{+} = 100$ in GFDN to ensure the computation can be completed within a limited time. The other hyperparameters are set to the default values provided by the original implementation. 
+
+\noindent \textbf{Implementation and Deployment.} We implement \toolname in Python and train our model using PyTorch~\cite{paszke2019pytorch}. For \ac{kg}-based relation embedding, we use the TransR model to learn the relation embeddings. The dimension of the relation embeddings $d$ is set to 8. Then we use the learned relation embeddings to initialize the relation embeddings in the \toolname. The dimension of the concatenated relation embeddings $D_{e}$ is set to 64. In graph-based fraud detection, we initialize the node embeddings of our model using full one vectors and project them to $D_{n} = 52$ with a linear layer. The attention size $D_{a}$ is set to 8, and the number of attention layers $l$ is set to 3. We train the model for 2,000 epochs using the Adam optimizer with a learning rate of 0.0001. 
+We set $T_s = 1.2\%$ to consider the top $T_{s}$ reconstruction losses as fraudster seeds. For anomaly proportion, we set $T_p = 0.65$ to identify fraudsters within the same group. We evaluate different threshold values of $T_s$ and $T_p$ to analyze the impact of these hyperparameters on the detection performance in Section~\ref{sec:rq4}. We deploy \toolname in the clusters of \Company with 96GB memory and an NVIDIA Tesla A100 GPU.
+Our implementation is publicly available at \url{https://anonymous.4open.science/r/PromoGuardian-D232/}.
+
+\subsection{RQ1: Detection Performance}
+\label{sec:rq1}
+
+
+\begin{table}[t!]
+    \scriptsize
+    \centering
+    \caption{Detection performance of \toolname and baselines on \ac{ppa}. \toolname-R/W/P represent the ablation study of \toolname.}
+    \resizebox{0.49\textwidth}{!}{\begin{tblr}{
+        cell{1}{1-6} = {c},
+        % cell{2-8}{1-2} = {l},
+        cell{2-11}{2-6} = {r},
+        vline{2},
+        hline{1,11} = {1pt},
+        stretch=0
+    }
+    \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{Precision} & \SetCell[r = 1, c = 1]{c} \textbf{Recall} & \SetCell[r = 1, c = 1]{c} \textbf{F1} & \SetCell[r = 1, c = 1]{c} \textbf{Accuracy} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{FRAUDAR} & 0.4667 & 0.4765 & 0.4715 & 0.9846  \\
+    \SetCell[r = 1, c = 1]{c} \textbf{GFDN} & 0.3225 & 0.4314 & 0.3690 & 0.9018 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{COFRAUD} & 0.1386 & 0.1855 & 0.1587 & 0.9596 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{DiG-In-GNN} & 0.1729 & 0.1650 & 0.1689 & 0.9607  \\
+    \SetCell[r = 1, c = 1]{c} \textbf{GraphSAGE} & 0.6110 & 0.1824 & 0.2810 & 0.9564\\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-R} & 0.8383 & 0.4122 & 0.5527 &  0.9829 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-W} & 0.7332 & 0.3890 & 0.5083 & 0.9805 \\
+    % \SetCell[r = 1, c = 1]{c} \textbf{\toolname-A} &   &  &  &    \\ 
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-P} & 0.8546 & 0.5382 & 0.6605 & 0.9912 &\\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname} &  \textbf{0.9107} & \textbf{0.6992} & \textbf{0.7911} & \textbf{0.9923} \\
+
+
+
+\end{tblr} }
+    \label{tab:publicresult}
+\end{table}
+
+We evaluate the detection performance of \toolname and baseline methods on \ac{ppa} to demonstrate its effectiveness in identifying promotion abuse fraudsters. The results, presented in Table~\ref{tab:publicresult}, are measured using precision, recall, F1 score, and accuracy. For the detected unlabeled data, the findings were reported to the policy team of \Company. They randomly sampled 100 groups (where users purchasing products from the same retail store are considered one group) from the detected unlabeled data and manually verified the user labels within these groups. They group the users based on the retail store where they placed the orders, as the retail store is a key factor in ordering and delivery. Therefore the fraudsters always carry out fraudulent activities under the same retail store. 
+They calculated the true positives and false positives for the sampled users and extrapolated the statistics to all unlabeled users based on the sampling proportion. The overall metrics were then computed by combining these statistics with those of the labeled users. Finally, precision, recall, F1 score, and accuracy were derived from the aggregated statistics.
+
+The results show that \toolname outperforms all baseline methods in terms of precision, recall, F1 score, and accuracy. Specifically, \toolname achieves a precision of 0.9107, a recall of 0.6992, an F1 score of 0.7911, and an accuracy of 0.9923. 
+All the baseline methods have high accuracy because the normal users are the majority in the dataset, which results in a high true negative rate.
+FRAUDAR and GFDN achieve the best performance among the baseline methods because promotion abuse in the same group always shows aggregation on the limited products, which can be detected by the dense subgraph detection method. However, they only achieve a precision of 0.4667 and 0.3225 because they only consider the dense subgraph detection and ignore the spatial and temporal relations between transactions, which results in false positives on popular products and legitimate dealers. COFRAUD leverages the alienation and marginalization characteristics of fake reviews to detect fraudsters, which is not proper in detecting promotion abuse fraudsters. DiG-In-GNN only supports limited relations and loses lots of relation information on the graph, which results in lower performance. GraphSAGE achieves the best precision among the baseline methods, but it has a lower recall. 
+
+Table~\ref{tab:statistics} provides detailed manually verified results on the number of true positives and false positives for \toolname and the baseline methods. \toolname detects 65,006 labeled fraudsters and 20,979 unlabeled fraudsters, with only 8,431 false positives. 
+To further understand \toolname's effectiveness, we apply two rules from Section~\ref{sec:study:company} to classify the types of detected fraudulent groups for FRAUDAR, the best among the baseline methods, and \toolname. FRAUDAR identifies 2,945 groups of fraudsters, with 88\% of the detected groups classified as stocking-up fraud, which typically involves purchasing popular products in large quantities. Additionally, only 16\% of the groups are identified as cashback abuse fraud, most of which overlap with stocking-up fraud. 
+In contrast, \toolname detects 4,150 groups of fraudsters, with 45\% classified as cashback abuse fraud and 68\% as stocking-up fraud. This demonstrates that \toolname is more effective at detecting cashback abuse fraud compared to FRAUDAR. FRAUDAR primarily focuses on dense subgraph detection, which is effective for identifying stocking-up fraud. However, \toolname leverages spatial and temporal cohesion patterns in fraudulent activities, enabling it to detect fraud that may not exhibit high density but still demonstrates significant cohesion across spatial and temporal dimensions.
+
+
+% We find that the false negatives are mainly caused by the fraudsters who organized in small groups, less than ten, and did not show apparent cohesion on the graph. These fraudsters cannot cause significant economic losses to the platform and are not considered high-risk users. 
+
+
+% Overall, the results demonstrate that \toolname can effectively detect promotion abuse fraudsters in e-commerce platforms by considering the spatial and temporal relations between transactions and the group structure of fraudsters.
+
+
+\begin{table}[t!]
+    \scriptsize
+    \centering
+    \caption{The number of detected users of \toolname and baselines on \ac{ppa}. TP denotes true positive, FP denotes false positive. L and U denote labeled and unlabeled users. \toolname-R/W/P represent the ablation study of \toolname.}
+    \resizebox{0.4\textwidth}{!}{\begin{tblr}{
+        cell{1}{1-6} = {c},
+        % cell{2-8}{1-2} = {l},
+        cell{2-12}{2-6} = {r},
+        vline{2},
+        hline{1,12} = {1pt},
+        stretch=0
+    }
+    \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 2]{c} \textbf{TP} & & \SetCell[r = 1, c = 2]{c} \textbf{FP} &  \\ \cline{2-9}
+    & \SetCell[r = 1, c = 1]{c} \textbf{L} & \SetCell[r = 1, c = 1]{c} \textbf{U} & \SetCell[r = 1, c = 1]{c} \textbf{L} & \SetCell[r = 1, c = 1]{c} \textbf{U} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{FRAUDAR} & 43,129 & 15,469 & 683 & 66,277  \\
+    \SetCell[r = 1, c = 1]{c} \textbf{GFDN} &38,517  & 14,535 & 1,862 & 109,588 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{COFRAUD} & 17,246 & 5,566 & 2,535 & 139,242   \\
+    \SetCell[r = 1, c = 1]{c} \textbf{DiG-In-GNN} & 16,152 & 4,139 & 1,263 & 95,803  \\
+    \SetCell[r = 1, c = 1]{c} \textbf{GraphSAGE} & 17,407 & 5,024 & 451 & 13,830  \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-R} & 36,803 & 13,888 & 402 & 9,376  \\
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-W} & 35,688 & 12,150 & 534 & 16,873  \\
+    % \SetCell[r = 1, c = 1]{c} \textbf{\toolname-A} &   &  &  &    \\ 
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-P} & 54,671 & 11,515 & 420 & 10,814   \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname} & 65,006 & 20,979 & 356 & 8,075  \\
+
+
+
+\end{tblr} }
+    \label{tab:statistics}
+\end{table}
+
+
+\subsection{RQ2: False Positives and False Negatives}
+
+We analyze its false positives and false negatives in identifying promotion abuse fraudsters. Given the large scale of the dataset, manually verifying all cases is infeasible. Therefore, we first group users based on the retail store from which they place the orders, as described in Section~\ref{sec:rq1}. We then manually examine the top ten largest groups of users to identify the main causes of false positives and false negatives.
+
+For false positives, we observe that all ten retail stores associated with these groups exhibit fraudulent activities during our detection period. This indicates that the users in these groups are not fraudsters themselves but happen to purchase products from the same retail store. Most of these false positives occur because these users either made purchases during the same time period or ordered a small number of products from the same retail store within the detection window, creating patterns that resemble fraudulent behavior. However, these users are not penalized by the platform or blocked from making purchases. The platform assesses the risk of detected users based on manually crafted rules, primarily considering the frequency of purchases and the amount of money spent. Since these users do not exhibit significant fraudulent behavior in terms of purchase amount and frequency, they are not classified as high-risk users. We then feed all the false positives to the rules and only 479 users are classified as medium-risk users, which is acceptable for the platform.
+
+
+For false negatives, we find that 85\% of them are caused by fraudsters operating in small groups of fewer than ten members. They are labeled as fraudsters because the label is based on the reported cases and existing XGBoost-based classification methods. 
+Existing XGBoost-based fraud detection methods classify them as fraudsters based on the statistics of their transaction features, such as the number of products purchased in the past 7, 14, and 30 days. Therefore, although these fraudsters are in small groups, they can be detected by the existing XGBoost-based methods. However, they do not exhibit significant cohesion in the graph, making them harder to detect using \toolname. 
+Compared to the large-scale fraud, these small groups typically do not cause substantial economic losses to the platform. Consequently, \toolname is complementary to the existing XGBoost-based approach and can enhance the overall protection level of the platform.
+
+% % \begin{table}[t!]
+% %     \scriptsize
+% %     \centering
+% %     \caption{Relations between transactions in \Company datasets.}
+% %     \resizebox{0.45\textwidth}{!}{\begin{tblr}{         
+% %         cell{1-9}{1} = {l},
+% %         cell{1-9}{2} = {l},
+% %         hline{1,10} = {1pt},
+% %         }
+% %         \textbf{Name} & \textbf{Description} \\ \hline
+% %         location & The location of the transactions.\\ \hline
+% %         bssid & The WiFi BSSID used by the device.\\ \hline
+% %         consignee & The name, phone number and address of consignee.\\\hline
+% %         share\_id & The shared link that related to the transaction.\\\hline
+% %         chat\_no & The chat room number of the transaction.\\\hline
+% %         promotion & The promotion information of the products. \\\hline
+% %         coupon & The coupon that the transaction used. \\\hline
+% %         stimulation & The stimulation strategy towards offline dealers. \\
+% %     \end{tblr} }
+% %     \label{tab:relation}
+% % \end{table}
+
+% % Although traditional fraud behaviors are also organized in crowds, they show alienation and marginalization in the relations between fraudsters and normal users~\cite{zang2023don}, which means that the fraudsters camoufage their behaviors in similar patterns so that their behaviors can be detected.  In addition, existing public available datasets, such as Amazon and Yelp, only contain the online information of the goods, lacking the spatial and temporal information of the behaviors of the users. These spatial and temporal information, such as the location of the users, the time of the transactions and the devices used by the users, are important for the detection of promotion abuse fraud. 
+
+
+
+% We compare the spatial and temporal characteristics of fraudsters between Amazon/Yelp and \ac{ppa}. 
+% For spatial characteristics, fraudsters always show distinguished patterns in the spatial information of the transactions, such as orders in specific geographic areas or reviews in similar contents.
+% By analyzing the spatial data of transactions, we can identify unusual patterns and distinguish fraudsters from normal users. For Amazon and Yelp datasets, we treat the spatial characteristics as the existing three relations between users.
+% For \ac{ppa}, we use the eight spatial characteristics to represent the spatial information of the transactions.
+% For temporal characteristics, fraudulent transactions are always carried out in a specific time frame or with a specific frequency, such as multiple orders placed within a short time frame or suspicious ordering patterns lasting for weeks or even months.
+% By examining the timing of transactions, we can detect suspicious patterns, such as multiple orders placed within a short time frame or suspicious ordering patterns that lasted for a long time. 
+% Therefore we treat the timestamp of the transactions as the temporal information of the transactions. 
+
+
+% \begin{table}[t!]
+%     \scriptsize
+%     \centering
+%     \caption{Statistics analysis of relation distribution in the Amazon and Yelp datasets. For User Types, ``F'' indicates fraudsters and ``N'' indicates normal users.
+%      ``\#Relations'' indicates the number of relations between users. ``\#Pairs'' indicates the number of pairs of users. ``Ratio'' indicates the ratio of the number of pairs of users in relation to the total number of pairs of users.``WD'' indicates the Wasserstein Distance of the relation distribution between fraudsters and normal users.}
+%     \resizebox{0.48\textwidth}{!}{\begin{tblr}{
+%         % cell{1-2}{1-11} = {c},
+%         cell{2-9}{1-2} = {l},
+%         cell{2-6}{3-8} = {r},
+%         hline{1,7} = {1pt},
+%         vline{2,3,5,7,9},
+%         stretch=0
+%     }
+%     \SetCell[r = 2, c = 1]{c}  \textbf{Dataset}& \SetCell[r = 1, c = 1]{c} \textbf{User} &  \SetCell[r = 1, c = 2]{c} \textbf{\#Relations=1} & & \SetCell[r = 1, c = 2]{c} \textbf{\#Relations=2} &  &\SetCell[r = 1, c = 2]{c} \textbf{\#Relations=3} &  &\SetCell[r = 2, c = 1]{c} \textbf{WD} \\ \cline{3-8}
+%      & \textbf{Types} &  \SetCell[r = 1, c = 1]{c} \textbf{\#Pairs}& \SetCell[r = 1, c = 1]{c} \textbf{Ratio} & \SetCell[r = 1, c = 1]{c} \textbf{\#Pairs}& \SetCell[r = 1, c = 1]{c} \textbf{Ratio} & \SetCell[r = 1, c = 1]{c} \textbf{\#Pairs}& \SetCell[r = 1, c = 1]{c} \textbf{Ratio} & \\ \hline
+%     \SetCell[r = 2, c = 1]{c} \textbf{Amazon} & \SetCell[r = 1, c = 1]{c} \textbf{F}  & 5K & 87.53\% & 813 &12.32\%  & 10 & 0.15\% & \SetCell[r = 2, c = 1]{c} 0.008\\\hline
+%      & \SetCell[r = 1, c = 1]{c} \textbf{N} & 3M & 91.03\% &  310K& 8.62\%  & 12K & 0.35\% & \\\hline
+%     \SetCell[r = 2, c = 1]{c} \textbf{Yelp} & \SetCell[r = 1, c = 1]{c} \textbf{F} & 4K & 96.45\%  &  153 &  3.55\% & 0 &  0\% & \SetCell[r = 2, c = 1]{c} 0.002 \\\hline
+%      & \SetCell[r = 1, c = 1]{c} \textbf{N}  & 1M & 95.66\% & 47K & 4.34\%  & 0 & 0\% &\\
+%     % \SetCell[r = 4, c = 1]{c} \textbf{Yelp} & 813 &  &  310914 &  & & & &\\ 
+
+% \end{tblr} }
+% \label{tab:publicanalyze}
+% \end{table}
+
+
+
+% \noindent \textbf{Spatial Relations.}
+% To analyze the spatial relations among fraudsters and normal users, we first calculate the number of relations among fraudsters and normal users in different datasets. The number of relations between users is defined as the number of dimensions in which two users have connections. 
+% For review fraud in public datasets, Table~\ref{tab:publicanalyze} shows the relation distribution of fraudsters and normal users. 
+% We use average Wasserstein distance~\cite{panaretos2019statistical} to measure the difference in relation cohesion between fraudsters and normal users. The average Wasserstein distance is 0.008 for Amazon and 0.002 for Yelp. The low average Wasserstein distance indicates that the fraudsters and normal users on Amazon and Yelp show similar cohesion in spatial relations. It reveals that the relation distribution of review fraud behaviors in Amazon and Yelp show no difference to the normal users.
+
+
+
+
+
+% % \begin{figure}
+% %     \centering
+% %     \hspace*{-1cm} % 调整这个值以控制向左移动的距离
+% %     \includegraphics[width=0.45\textwidth]{fig/bar_chart.pdf}
+% %     \caption{Coverage of fraudulent transactions by each relation.}
+% %     \label{fig:coverage}
+% % \end{figure}
+
+
+% % \begin{figure}
+% %     \centering
+% %     \hspace*{-1cm} % 调整这个值以控制向左移动的距离
+% %     \includegraphics[width=0.45\textwidth]{fig/frequency_distribution_histogram.pdf}
+% %     \caption{The distribution of the number of relations between users.}
+% %     \label{fig:distribution}
+% % \end{figure}
+
+
+
+% For promotion abuse fraud in \ac{ppa}, eight spatial relations between users were identified. The number of relations between fraudsters and normal users was calculated using the same method. Figure~\ref{fig:distribution} illustrates the distribution of the number of relations between users. Fraudsters exhibit high cohesion across multiple dimensions, with 75\% of their transactions involving more than two relations. In contrast, normal users demonstrate lower cohesion, as 61\% of their transactions involve only one relation. The average Wasserstein distance between the distributions of fraudsters and normal users is 0.013, 1.6-7.3 times higher than the average Wasserstein distance observed in Amazon and Yelp datasets. Figure~\ref{fig:coverage} highlights the contribution of each relation to fraudster coverage. Relations such as $r_{4}$, $r_{6}$, $r_{7}$ and $r_{8}$ show high coverage of fraudulent transactions, indicating that fraudsters frequently associate with one another along these dimensions. Although $r_{3}$ and $r_{5}$ cover a smaller proportion of fraudsters, they remain critical for the detection of distributed fraudsters, in which fraudsters are organized online but operate in different locations. 
+% While such cases are relatively rare, their potential for significant financial loss underscores the importance of detecting these behaviors.
+
+% \begin{figure}[t!]
+%     \centering
+%     \hspace*{-1cm} % 调整这个值以控制向左移动的距离
+%     \includegraphics[width=0.48\textwidth]{fig/relations_distribution.pdf}
+%     \caption{The distribution of the number of relations between users.}
+%     \label{fig:distribution}
+
+% \end{figure}
+
+% \begin{figure}[!t]
+%     \centering
+%     \hspace*{-1cm} % 调整这个值以控制向左移动的距离
+%     \includegraphics[width=0.48\textwidth]{fig/relation_coverage.pdf}
+%     \caption{Coverage of fraudulent transactions by each relation.}
+%     \label{fig:coverage}
+% \end{figure}
+
+
+% \noindent \textbf{Temporal Relations.}
+% In our design, we propose to use co-occurrence frequency $w^{ij}_{r}$ between two users $u_{i}$ and $u_{j}$ under spatial relation $r$ to quantify the temporal cohesion. In this part, we aim to demonstrate the effectiveness of $w^{ij}_{r}$ in characterizing the temporal cohesion of fraudsters.
+
+% To quantify temporal cohesion under varying spatial relations, we propose the use of the \ac{tcs}, $s_{c}^{r}$, to evaluate the relative density of intra-group connections compared to connections with external users. Inspired by the concept of modularity in community detection~\cite{newman2004finding,wang2023removing}, we define \ac{tcs} as follows:
+% \begin{equation}
+%     s_{c}^{r} = \frac{\sum_{u_{i} \in c} \sum_{u_{j} \in c} w_{r}^{ij}}{\sum_{u_{i} \in c} \sum_{u_{j} \in V} w_{r}^{ij}}
+% \end{equation}
+% Here, $c$ denotes the group of users, $V$ represents the set of all the users, $w_{r}^{ij}$ indicates the \ac{tcs} between user $u_{i}$ and $u_{j}$ in the relation $r$. A higher $s_{r}^{c}$ signifies the stronger temporal cohesion for the relation $r$ within the group $c$. To evaluate the \ac{tcs} of fraudulent and normal users, we selected five fraudulent groups and five normal groups from \ac{ppa} in the same city, containing 1,000 users in total. These groups conducted transactions under three retail stores. 
+% The selection of a subset, rather than all groups, helps to reduce computational cost while maintaining the representativeness of the average scenario.
+% Users were then categorized into two groups: $c_{n}$, representing normal users, and $c_{f}$, representing fraudsters, with $V = c_{n} \cup c_{f}$. 
+% For $c_{n}$, we extracted a subgraph of normal users, denoted as $G_{n}$ and for $c_{f}$, we extract the subgraph of the fraudsters, denoted as $G_{f}$. Using the $G_{n}$ and $G_{f}$, we can calculate $s_{c}^{r}$ for both the fraudsters and normal users in the relation $r$. Table~\ref{tab:temporalscore} shows the results. The results indicate that the average \ac{tcs} of fraudulent groups, 0.81, is 23\% higher than that of normal users, 0.66. This suggests that fraudsters exhibit stronger temporal cohesion in different spatial relations, indicating that they frequently co-occur in various spatial relations.
+
+
+
+
+% \begin{table}[t!]
+%     \scriptsize
+%     \centering
+%     \caption{\ac{tcs} of $c_{n}$ and $c_{f}$ in different relations. Higher \ac{tcs} indicates stronger temporal cohesion.}
+%     \resizebox{0.35\textwidth}{!}{\begin{tblr}{
+%         cell{1-2}{1-6} = {c},
+%         % cell{2-9}{1-2} = {l},
+%         cell{3-6}{1,4} = {c},
+%         cell{3-6}{2-3} = {r},
+%         cell{3-6}{5-6} = {r},
+%         hline{1,2,7} = {1pt},
+%         vline{2,3,4,5,6},
+%         stretch=0
+%     }
+%     \SetCell[r = 2, c = 1]{c}  \textbf{Relation} &  \SetCell[r = 1, c = 2]{c} \textbf{\ac{tcs}} & & \SetCell[r = 2, c = 1]{c}  \textbf{Relation} &  \SetCell[r = 1, c = 2]{c} \textbf{\ac{tcs}} \\
+%      & \SetCell[r = 1, c = 1]{c} \textbf{$G_{n}$}  & \SetCell[r = 1, c = 1]{c} \textbf{$G_{f}$} & & \SetCell[r = 1, c = 1]{c} \textbf{$G_{n}$}  & \SetCell[r = 1, c = 1]{c} \textbf{$G_{f}$} \\\hline
+%     $r_1$ & 0.58 & 0.73 & $r_5$ & 0.88 & 0.97 \\
+%     $r_2$ & 0.88 & 0.91 & $r_6$ & 0.49 & 0.87 \\
+%     $r_3$ & 0.65 & 0.75 & $r_7$ & 0.63 & 0.67 \\
+%     $r_4$ & 0.59 & 0.77 & $r_8$ & 0.60 & 0.78\\
+
+% \end{tblr}}
+% \label{tab:temporalscore}
+% \end{table}
+
+
+% % ~\cite{} has revealed that the fraudsters in Amazon and Yelp show alienation and marginalization, which means that the fraudsters camoufage their behaviors so that their behaviors are deviated from the normal users. 
+% \begin{tcolorbox}[title=Conclusion, left=2pt, right=2pt, top=2pt, bottom=2pt]
+%     The results demonstrate that the fraudsters in promotion abuse fraud show different cohesion patterns in spatial and temporal relations compared to review fraud in Amazon and Yelp.
+%     For spatial relations, the cohesion is reflected in the higher dimension of interactions between them.
+%     For temporal relations, the fraudsters in promotion abuse fraud show high co-occurrence frequency on different spatial relations.
+%     The results validate the effectiveness of our insight in detecting promotion abuse fraud by considering the spatial and temporal relations between transactions.
+% \end{tcolorbox}
+
+
+\subsection{RQ3: Real-world Deployment}
+To demonstrate the effectiveness and scalability of \toolname in real-world operational conditions, we deploy \toolname in the production environment of \Company and evaluate its performance for one week in November 2024. In real-world production environments, the daily active users of \Company reach millions, and the daily transaction numbers are in the tens of millions. We also compare the detection performance of \toolname with the baseline methods. 
+
+We deploy the model trained on \ac{ppa} to detect fraudsters in the production environment. 
+For online deployment, we cannot calculate the recall, F1 score, and accuracy because the ground truth is not available. Therefore, we only evaluate the precision and actual effect of the detection, which are more important in real-world scenarios.
+For precision and the number of detected fraudsters, we use the manual rules for risk grading that are deployed in the online system and regard all risky users as fraudsters. We then calculated the number of transactions blocked by the system and the economic losses avoided by blocking these transactions. The Gross Margin (GM) for each transaction is a key indicator for the platform to evaluate the economic income, which is defined as the sales revenue minus the cost of sales. 
+For most of the products under promotion, the subsidies provided by the platform exceed the actual revenue generated, resulting in negative GM. 
+Therefore the avoided economic losses can be calculated as: $L(T) = -\sum_{i\in T}{GM_{i}}$, where $T$ is the set of transactions blocked by the system and $GM_{i}$ is the GM of transaction $i$.
+
+
+The average results of the seven days are shown in Table~\ref{tab:productionresult}.
+The results show that \toolname achieves the best detection performance among all the methods, with a precision of 0.9315, 37,517 fraudsters, 72,734 blocked transactions, and \$27,945 avoided economic losses per day. 
+Among the detected fraudsters, 76\% of them are ordinary users who also purchase products that are not under promotion during the detection period, which indicates that these users conducted transactions for their own purposes or to camouflage their behaviors. The results demonstrate that \toolname can effectively detect promotion abuse in the production environment and avoid economic losses.
+
+
+\begin{table}[t!]
+    \scriptsize
+    \centering
+    \caption{The average detection performance in the production environment for a week. \toolname-R/W/P represent the ablation study of \toolname.}
+    \resizebox{0.48\textwidth}{!}{\begin{tblr}{
+        % cell{1-2}{1-11} = {c},
+        % cell{2-8}{1-2} = {l},
+        cell{3-11}{2-5} = {r},
+        hline{1,12} = {1pt},
+        stretch=0
+    }
+    \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 2, c = 1]{c} \textbf{Precision}  & \SetCell[r = 1, c = 1]{c}  \textbf{Detected}  &  \SetCell[r = 1, c = 1]{c}  \textbf{Blocked} & \SetCell[r = 1, c = 1]{c} \textbf{Avoided Economic} \\ 
+    & & \SetCell[r = 1, c = 1]{c} \textbf{Fraudsters} & \SetCell[r = 1, c = 1]{c}  \textbf{Transactions} & \SetCell[r = 1, c = 1]{c}  \textbf{Losses (\$)} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{FRAUDAR} & 0.4207 & 13,628 & 58,243 & 14,515 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{GFDN}  & 0.2859 & 17,583 & 59,174 & 17,534\\
+    \SetCell[r = 1, c = 1]{c} \textbf{COFRAUD}  & 0.1714 & 7,527 & 15,254 & 5,226 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{DiG-In-GNN} & 0.1627 & 8,911 & 10,969 & 3,159  \\
+    \SetCell[r = 1, c = 1]{c} \textbf{GraphSAGE} & 0.4600 & 15,444  & 30,899 & 10,044 \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-R} & 0.7251 & 20,509 & 54,569 & 19,035 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-W} & 0.5987 & 17,583  & 52,304 & 16,603 \\
+    % \SetCell[r = 1, c = 1]{c} \textbf{\toolname-A} &  &  & & \\
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname-P} & 0.6981 & 28,326 & 62,680 & 21,537  \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{\toolname} & \textbf{0.9315} & \textbf{37,517} & \textbf{72,734} & \textbf{27,945} \\
+
+\end{tblr} }
+    \label{tab:productionresult}
+\end{table}
+
+Figure~\ref{fig:productionresult} shows the results of each day and reflects the stability of \toolname in the production environment. The results show that \toolname consistently outperforms the baseline methods in our evaluation. 
+Among the baseline methods, FRAUDAR and GFDN blocked more transactions and avoided more economic losses than other methods, while detecting similar numbers of fraudsters as COFRAUD and GraphSAGE. This is because FRAUDAR and GFDN are more sensitive to the dense subgraphs in the graph, therefore they are effective in detecting fraudsters in large groups with more transactions. 
+However, they also have a higher false positive rate, which results in lower precision. These false positives are mainly caused by legitimate dealers who have a large number of transactions and are not considered fraudsters. Therefore, we need to consider the cohesion of the fraudsters in spatial and temporal relations to reduce the false positives in such cases.
+
+
+
+\begin{figure}[t!]
+    \centering
+    \includegraphics[width=0.49\textwidth]{fig/production_result.pdf}
+    \caption{The detection performance of \toolname and baselines in real-world deployment.}
+    \label{fig:productionresult}
+    
+\end{figure}
+
+\noindent \textbf{Case Study.} During the one-week deployment of \toolname, a large-scale promotion abuse fraud group was uncovered. This group involved 319 users, with three headers (Header X, Header Y, and Header Z) acting as the organizers. The retail stores of these three headers are located in the same city, and they are responsible for managing the sales and deliveries for different regions of the city. The group engaged in stocking-up fraud over two days and cashback abuse fraud for an entire week.
+
+In the case of stocking up, they targeted high-demand products with good resale value. During the evaluation period, a promotion on drinks such as milk, beer, and water offered subsidies, making the products cheaper than on other platforms. Each user was limited to purchasing two packs. To bypass this limit, the headers organized multiple accounts. For instance, Header X coordinated with 96 users, who collectively placed 183 orders of drinks within a week, far exceeding normal purchasing volumes. These purchases were often made within a 30-minute window on specific days, with orders placed at the same location or using the same shared link. Similar patterns were observed in the retail stores of Header Y and Header Z.
+
+
+For cashback abuse, the platform provides cashback incentives on specific products it aims to promote. The three headers colluded to fabricate transactions and claim cashback rewards. They shared their user networks and organized users to purchase low-cost products, such as instant noodles, toilet paper, and snacks. For instance, Header Y's store in the eastern part of the city received 351 orders in a week from users associated with Header X in the north and Header Z in the west. Each user purchased only one of these low-cost products per day, and this pattern persisted for weeks. The same group of users consistently appeared during specific time periods, exhibiting high co-occurrence frequency.
+
+Overall, this group placed 2,565 orders, with a total transaction value of \$13,354 and $L(T) =$ \$1,023.
+The risk grading system of \Company identified 162 users as high-risk, banning their accounts for half a year; 101 users as medium-risk, banning their accounts for one month; and 56 users as low-risk, issuing warnings. The headers were penalized by suspending their promotion and cashback incentives for six months.
+
+\subsection{RQ4: Ablation Study}
+In this section, we evaluate the contribution of each component of \toolname through ablation studies. We evaluate three variants of \toolname, including \toolname-R, which removes \ac{kg}-based relation embeddings and initializes them with uniform vectors;
+\toolname-W, which replaces weighted concatenation with simple concatenation by setting all relation weights to 1; and \toolname-P, which removes the anomaly propagation mechanism. 
+
+\begin{figure}[t!]
+    \centering
+    \includegraphics[width=0.49\textwidth]{fig/ablation.pdf}
+    \caption{The ablation study of \toolname in real-world deployment.}
+    \label{fig:ablation}
+    
+\end{figure}
+
+
+We evaluate the performance of these three variants and compare them with the full model on \ac{ppa} and the production environment.
+Table~\ref{tab:publicresult}, \ref{tab:statistics} and \ref{tab:productionresult} show the results on \ac{ppa} and the production environment. Figure~\ref{fig:ablation} shows the results of each day in the production environment.
+Overall, the results show that all the variants of \toolname have decreased performance compared to the full model. Especially, \toolname-W performs the worst, with 35\% lower precision, 53\% lower detected fraudsters, 28\% lower blocked transactions, and 41\% lower avoided economic losses than the full model during the production environment evaluation. This is because the weighted concatenation can effectively capture the importance of each relation in the graph and reduce the noise caused by the irrelevant relations. \toolname-R and \toolname-P also have slightly decreased performance compared to the full model. \ac{kg}-based relation embedding can effectively capture the complex relations between users and get better relation embedding than initializing with full one vectors. Anomaly propagation can effectively propagate to discover the fraudsters in the same group. 
+% The results demonstrate that each part of \toolname contributes to the detection performance, and the weighted concatenation is the most important part.
+
+
+

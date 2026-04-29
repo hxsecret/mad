@@ -1,0 +1,183 @@
+\section{Evaluation}\label{sec:evaluation}
+
+We evaluate the effectiveness of MAD in detecting malicious behavior embedded in model artifacts. Our study focuses on three aspects: (i) detection performance compared to state-of-the-art defenses, including robustness to camouflage attacks such as TensorAbuse; (ii) the impact of cross-layer modeling and its components on accuracy and explainability; and (iii) runtime overhead and deployability in realistic analysis environments. We organize the evaluation around the following research questions:
+
+\begin{itemize}[noitemsep, topsep=1pt, partopsep=1pt, listparindent=\parindent, leftmargin=*]
+    \item \textbf{RQ1:} Can MAD accurately detect malicious model artifacts.
+    \item \textbf{RQ2:} Can MAD distinguish camouflaged, stealthy malicious models from benign models?
+    \item \textbf{RQ3:} What is the runtime overhead of MAD, and is it practical to deploy in real-world model vetting workflows?
+    \item \textbf{RQ4:} How does each part of MAD contribute to the detection performance?
+\end{itemize}
+
+
+\subsection{Experiment Setup}
+
+In this section, we describe the datasets, baselines, and implementation details used in our evaluation.
+
+\noindent \textbf{Datasets.}
+We evaluate MAD on two distinct datasets to comprehensively assess its detection capabilities against both known, rudimentary vulnerabilities and complex, advanced supply-chain attacks:
+\begin{itemize}
+    \item \emph{In-the-wild Malicious Models.} The first dataset consists of known malicious models identified by prior research using MalHug. Specifically, this includes 87 models exploiting Pickle serialization vulnerabilities and 15 models abusing Keras custom Lambda layers to execute malicious behaviors. While these models represent real-world threats, their attack methodologies are relatively monolithic, rely on well-known deserialization flaws, and are generally straightforward to detect using existing static or signature-based scanning tools.
+    \item \emph{Advanced TensorAbuse Synthetic Corpus.} To address the limitations of the first dataset and evaluate our system against highly stealthy, framework-native attacks, we constructed a second, more challenging dataset using TensorAbuse. We selected 10 diverse foundation models spanning various domains to serve as benign baselines. We then systematically embedded malicious payloads directly into the computational graphs of these models. Specifically, we designed four categories of advanced attacks: File Exfiltration, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition. For each category, we implemented two distinct attack methodologies utilizing TensorAbuse primitives. By embedding each of the 8 unique attack variants into the 10 foundation models, we generated a comprehensive corpus of 80 advanced malicious models across different domains.
+\end{itemize}
+
+For all datasets, we treat the model artifact as the unit under test. Labels are assigned by manual
+inspection of the payload code and by verifying whether a model performs any
+malicious operation in a sandboxed environment.
+
+\noindent \textbf{Baselines.} We select four malicious model detection methods as baselines. These include three widely adopted third-party detection tools—JFrog~\cite{jfrog}, Protect AI~\cite{protectai}, and ClamAV~\cite{clamav}—which represent the state-of-the-art security scanners currently integrated into the Hugging Face platform, alongside the specialized detection tool provided by the TensorAbuse~\cite{tensorabuse} framework.
+
+Crucially, for JFrog, Protect AI, and ClamAV, we directly uploaded our constructed model artifacts to the Hugging Face platform. This methodology triggers the platform's live, integrated security scanning pipelines in real time. By doing so, we capture the authentic detection efficacy and assess the actual defensive posture within a real-world AI model supply chain. For the TensorAbuse detection tool, which focuses on statically identifying suspicious API calls embedded within computational graphs, we utilize the open-source implementation provided by the authors. Since these baseline methods primarily rely on static analysis and signature matching without requiring dynamic execution traces or cross-layer alignment, we evaluate their performance directly against the raw model artifacts under these authentic, platform-native conditions to ensure a rigorous and realistic comparison.
+
+
+
+\noindent \textbf{Implementation Details.}
+MAD is implemented in Python. The kernel-level module uses \texttt{strace} to
+collect system calls from the target process and its children. We aggregate
+raw system-call streams into per-resource operation vectors $\mathbf{v}_{\textit{dir}}$
+and $\mathbf{v}_{\textit{sys}}$ as described in Section~\ref{sec:design}, and train
+an Autoencoder on operation vectors extracted from a corpus of trusted benign
+models. The reconstruction error threshold $\theta$ is chosen on a validation
+set to balance detection rate and false positives.
+
+For Python semantic instrumentation, we apply non-invasive monkey patching to
+framework and standard-library APIs that can indirectly perform security-
+relevant operations (e.g., file I/O, network, subprocess). Instrumentation
+records events of the form $\ell_i = \langle \textit{PID}, \textit{TID},
+\textit{FuncName}, \textit{ArgsSummary} \rangle$ with bounded argument
+summaries. Cross-layer association then aligns abnormal operations with
+nearby semantic events using the spatio-temporal strategy in
+Section~\ref{sec:design}, and constructs behavior profiles that are fed to an
+LLM for final intent reasoning. We use a production-grade LLM with
+temperature set to zero for deterministic decisions.
+
+All experiments are conducted on a workstation equipped with dual Intel Xeon Silver 4210R CPUs, 128 GB RAM, and two NVIDIA GeForce RTX 3090 GPUs. 
+
+
+\subsection{RQ1: Detection Performance}
+
+%To answer RQ1, we compare MAD with the baselines on the curated malicious corpus and synthetic variants. For each model, we execute a standardized loading and inference procedure in a sandbox and record whether the detector raises an alert. We measure \emph{detection rate} (true positive rate on malicious models), \emph{false-positive rate} (fraction of benign models flagged as malicious), and \emph{precision}.
+
+%Empirically, static scanners achieve high precision on simple payloads that explicitly import dangerous APIs, but miss a substantial fraction of attacks that hide behind authorized interfaces or deferred execution. System-call-only baselines detect a larger fraction of attacks, especially those that perform overt file or network operations, but suffer from elevated false positives on benign models with unusual I/O patterns (e.g., heavy checkpointing or remote logging).
+
+%MAD consistently achieves higher detection rates than static scanners while maintaining a lower false-positive rate than the system-call-only baseline. By combining unsupervised low-level anomaly detection with cross-layer intent reasoning, MAD successfully flags camouflage attacks that are deliberately structured to evade static signatures, yet avoids over-flagging benign utilities that legitimately exercise advanced framework features.
+\label{sec:rq1}
+
+To answer this research question, we evaluate the detection performance of MAD and the baseline methods across both the in-the-wild malicious model dataset from MalHug and our advanced TensorAbuse synthetic corpus. This comprehensive evaluation demonstrates MAD's effectiveness in identifying a wide spectrum of malicious activities, ranging from known deserialization exploits to sophisticated framework-native attacks.
+
+\begin{table}[t!]
+    \scriptsize
+    \centering
+    \caption{Detection performance (Recall/Number of detected malicious models) of MAD and baselines on the in-the-wild MalHug dataset (Total 87 malicious models).}
+    \resizebox{0.49\textwidth}{!}{\begin{tblr}{
+        cell{1}{1-2} = {c},
+        cell{2-6}{2} = {c},
+        vline{2},
+        hline{1,7} = {1pt},
+        stretch=0
+    }
+    \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{Detected Malicious Models / Total (Recall)} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & - / 87 (-) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & - / 87 (-) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & - / 87 (-) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & 0 / 87 (0.00\%) \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{78} / 87 (\textbf{89.66\%}) \\
+    \end{tblr} }
+    \label{tab:malhug_result}
+\end{table}
+
+\textbf{Performance on In-the-wild Dataset.} We first evaluate the methods on the dataset comprising 87 known malicious models . The results are presented in Table~\ref{tab:malhug_result}. As shown, MAD successfully detects 78 out of the 87 malicious models. It is crucial to note the nature of the 9 models that MAD "missed" which were originally flagged by MalHug. Detailed manual analysis revealed that these specific models merely exploit the inherent mechanics of insecure serialization formats to execute benign, normal operations. Their apparent purpose is to demonstrate the exploitability of the vulnerability as a proof-of-concept, rather than executing genuinely harmful actions such as data exfiltration, unauthorized network access, or privilege escalation. Because MAD relies on a two-stage screening process that evaluates the actual intent of the dynamic behavior, it correctly categorizes these models as non-malicious, demonstrating its robust resilience against false positives driven purely by static vulnerability signatures. In stark contrast, the TensorAbuse detection tool fails to identify any of these models, as its static graph-based approach cannot capture deserialization exploits that occur before or outside the computational graph instantiation.
+
+\begin{table}[htbp]
+    \scriptsize
+    \centering
+    \caption{Number of detected malicious models by MAD and baselines on the Advanced TensorAbuse Synthetic Corpus, categorized by attack type (20 models per type, 80 models total).}
+    \resizebox{0.49\textwidth}{!}{\begin{tblr}{
+        cell{1}{1-6} = {c},
+        cell{2-6}{2-6} = {c},
+        vline{2},
+        hline{1,7} = {1pt},
+        stretch=0
+    }
+    \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 4]{c} \textbf{Attack Type (Total models)} & \SetCell[r = 2, c = 1]{c} \textbf{Total Detected} \\ \cline{2-5}
+    & \SetCell[r = 1, c = 1]{c} \textbf{File Exfil.} & \SetCell[r = 1, c = 1]{c} \textbf{IP Exposure} & \SetCell[r = 1, c = 1]{c} \textbf{Code Insertion} & \SetCell[r = 1, c = 1]{c} \textbf{Remote Shell} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & - / 20 & - / 20 & - / 20 & - / 20 & - / 80 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & - / 20 & - / 20 & - / 20 & - / 20 & - / 80 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & - / 20 & - / 20 & - / 20 & - / 20 & - / 80 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\
+
+
+\end{tblr} }
+    \label{tab:synthetic_result}
+\end{table}
+
+\textbf{Performance on Advanced Synthetic Corpus.} We further evaluate the methods on our rigorously constructed dataset of 80 advanced malicious models, where attacks are deeply embedded within the models' computational graphs. Table~\ref{tab:synthetic_result} provides a detailed breakdown of the detection results across the four distinct attack categories (File Leakage, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition). Both MAD and the TensorAbuse detection tool successfully detect 100\% (80 out of 80) of the malicious models in this corpus. The TensorAbuse tool achieves perfect detection here because these specific attacks were generated using its own primitive methodologies, making them highly visible to its static API-checking mechanism. However, as demonstrated in Table~\ref{tab:malhug_result}, its static approach fails entirely against attacks outside its predefined scope. 
+
+Conversely, MAD achieves this 100\% detection rate without relying on static signatures or predefined API lists. By statistically profiling the benign baseline behaviors of models like BERT and VGG16, and dynamically intercepting the anomalous system calls generated by the malicious payloads (e.g., unexpected network connections or file reads), MAD accurately identifies the malicious intent regardless of the specific attack vector employed. [The performance of the remaining baseline tools—JFrog, Protect AI, and ClamAV—varies significantly across the different attack categories, highlighting the limitations of traditional scanning tools when faced with sophisticated, framework-native manipulations].
+
+Overall, the results across both datasets demonstrate that MAD provides a robust, highly generalizable defense mechanism capable of accurately detecting malicious AI model artifacts, regardless of whether they employ common deserialization flaws or advanced, stealthy computational graph manipulations.
+
+\subsection{RQ2}
+
+
+
+\subsection{RQ3: Component Ablation and Sensitivity}
+
+To understand the contribution of each component (RQ3), we conduct an ablation
+study and hyperparameter sensitivity analysis. Specifically, we evaluate the
+following variants:
+\begin{itemize}
+    \item \emph{MAD--S}: removes Python semantic instrumentation and LLM
+    reasoning, falling back to pure system-call anomaly detection.
+    \item \emph{MAD--K}: disables kernel-level monitoring and only uses Python
+    semantics plus LLM reasoning to decide intent.
+    \item \emph{MAD (no LLM)}: replaces LLM-based reasoning with simple
+    rule-based heuristics over the cross-layer behavior profile.
+\end{itemize}
+
+We also vary key thresholds such as the reconstruction-error threshold
+$\theta$ for the Autoencoder and the slack window $\Delta t$ used in
+spatio-temporal association.
+
+The results show that MAD--S suffers from increased false positives, as it
+lacks the high-level context needed to justify abnormal low-level operations.
+MAD--K, on the other hand, misses attacks that route through native
+extensions or perform sensitive operations entirely inside low-level
+libraries, demonstrating the importance of non-bypassable system-call
+evidence. Removing LLM-based reasoning degrades both detection accuracy and
+explainability; while coarse heuristics can approximate some decisions, they
+are less robust under complex multi-step behaviors.
+
+Sensitivity analysis indicates that MAD is stable over a broad range of
+Autoencoder thresholds: moderately tightening $\theta$ improves detection
+rates at the cost of small increases in false positives, while overly loose
+thresholds reduce coverage of subtle attacks. Similarly, the association
+window $\Delta t$ trades off between missing relevant context (too small) and
+introducing spurious semantic events (too large), but MAD remains robust as
+long as $\Delta t$ covers typical scheduling jitter.
+
+
+\subsection{RQ4: Runtime Overhead and Deployability}
+
+Finally, RQ4 evaluates the runtime overhead and deployability of MAD. We
+measure the end-to-end analysis time for each model under different
+configurations, breaking down the cost into (i) system-call tracing and
+operation aggregation, (ii) Autoencoder-based anomaly detection, (iii) Python
+semantic logging, and (iv) LLM-based reasoning.
+
+Our measurements show that kernel-level tracing and Autoencoder inference
+incur modest overhead relative to baseline model loading and inference time,
+thanks to the aggregation of raw system calls into compact operation vectors.
+Python semantic instrumentation adds a small constant factor overhead,
+primarily due to argument summarization and JSON logging; this overhead is
+kept low by avoiding instrumentation of low-level C/C++ bindings and by
+using lightweight summaries instead of full payloads.
+
+LLM-based reasoning is only invoked on a small fraction of operations marked
+as abnormal by the Autoencoder, so its cost does not scale with total runtime
+but with the number of suspicious events. In practice, this two-stage design
+keeps the overall overhead within the budget acceptable for offline model
+vetting pipelines and pre-deployment security checks. Our experiments suggest
+that MAD can be integrated as a final gate in model release workflows without
+significantly delaying deployment.
