@@ -12,8 +12,35 @@ The primary reason the AI model supply chain is highly susceptible to these atta
 Recent studies have provided comprehensive analyses of these malware poisoning attacks within pre-trained model hubs. Particular attention has been drawn to the exploitation of insecure serialization formats, which allow attackers to embed arbitrary execution commands that trigger automatically upon model loading. Because these payloads execute before the model even begins inference, and are woven into the legitimate deserialization process, they easily bypass conventional, surface-level detection mechanisms, making defense a formidable challenge.
 %TODO: add a table summarizing the attack techniques and serialization formats they used 
 
-\subsection{Existing Defenses and Their Limitations}
+\subsection{Existing Attack Vectors}
 
+Building upon the structural vulnerabilities of the supply chain, current attack methodologies primarily exploit two distinct vectors: insecure model serialization mechanisms and the abuse of framework-native Application Programming Interfaces.
+
+The prevalence of insecure serialization formats stems from a fundamental design tension between architectural flexibility and system security. To accurately preserve complex model architectures alongside their learned weights, frameworks frequently rely on serialization mechanisms that support arbitrary object instantiation. This design choice effectively blurs the boundary between passive data and executable code. Consequently, when a victim loads a compromised artifact, the deserialization engine automatically executes the embedded malicious payload prior to any actual machine learning computations. The vulnerability level of a model heavily depends on its storage paradigm. Formats designed to store both the model architecture and the weights pose the highest risk, whereas formats restricted to storing only numerical weights are inherently secure against direct code injection. Table \ref{tab:formats} summarizes the security posture of widely used model serialization formats.
+
+\begin{table}[h!]
+    \scriptsize
+    \centering
+    \caption{Taxonomy of common model formats and their vulnerability to code injection attacks.}
+    \begin{tabular}{llc}
+        \hline
+        \textbf{Model Format} & \textbf{Primary Frameworks} & \textbf{Vulnerability Level} \\ \hline
+        pickle, marshal & PyTorch, Scikit-learn & Highly Vulnerable \\
+        joblib, dill, cloudpickle & PyTorch, Scikit-learn & Highly Vulnerable\\
+        HDF5 & Keras & Potentially Vulnerable\\
+        SavedModel, Checkpoint & TensorFlow & Potentially Vulnerable\\
+        Safetensors & Hugging Face & Secure\\
+        ONNX, GGUF & ONNX, LLaMA & Secure\\
+        JSON, MsgPack & Various & Secure \\ \hline
+    \end{tabular}
+    \label{tab:formats}
+\end{table}
+
+Beyond serialization flaws, attackers increasingly deploy framework-native attacks by weaponizing legitimate APIs. In these scenarios, malicious logic is not embedded as standalone executable scripts but is instead compiled directly into the computational graph of the model. Frameworks like TensorFlow offer extensive lower-level APIs for tasks such as distributed training or local debugging, which inherently possess capabilities like file system access or network communication. Attackers hijack these standard operations to perform unauthorized actions. For example, utilizing officially supported debugging APIs to exfiltrate local data to remote servers ensures the malicious actions are executed entirely through the native framework components.
+
+This technique makes the attack exceptionally stealthy and difficult to mitigate. Traditional static analysis tools typically scan for known malicious signatures or external operating system library imports. Because framework-native attacks exclusively utilize the internal ecosystem of the AI framework, they generate no external dependencies and easily bypass conventional static blacklists. Furthermore, the malicious operations remain dormant during the initial loading phase and are only triggered dynamically as tensors flow through the graph during model inference. This execution dynamic creates a severe semantic gap where security monitors lacking application-layer context cannot easily distinguish between a legitimate data loading operation and a malicious file exfiltration.
+
+\subsection{Existing Defenses and Their Limitations}
 
 While extensive research has focused on inference-time threats—such as adversarial examples and data poisoning—efforts to secure the AI model supply chain against pre-execution malware injection remain comparatively limited and simplistic. Current defensive strategies primarily rely on static analysis and signature-based scanning tools to inspect model artifacts before deployment.
 For instance, Fickling was developed as a decompiler, static analyzer, and bytecode rewriter specifically for Python's pickle object serialization. By decompiling the opaque pickle data stream into readable Python code, Fickling attempts to identify embedded malicious payloads. Similarly, the Hugging Face platform employs a custom security scanner, Picklescan, which combines the traditional antivirus engine ClamAV with a mechanism to extract and inspect the import tables within pickle files. Furthermore, in tandem with the disclosure of the TensorAbuse attack, a detection methodology based on statically searching for suspicious API calls within computational graphs was proposed.
