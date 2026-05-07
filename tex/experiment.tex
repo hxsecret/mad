@@ -17,7 +17,7 @@ In this section, we describe the datasets, baselines, and implementation details
 \noindent \textbf{Datasets.}
 We evaluate MAD on two distinct datasets to comprehensively assess its detection capabilities against both known, rudimentary vulnerabilities and complex, advanced supply-chain attacks:
 \begin{itemize}
-    \item \emph{In-the-wild Malicious Models.} The first dataset consists of known malicious models identified by prior research using MalHug. Specifically, this includes 87 models exploiting Pickle serialization vulnerabilities and 15 models abusing Keras custom Lambda layers to execute malicious behaviors. While these models represent real-world threats, their attack methodologies are relatively monolithic, rely on well-known deserialization flaws, and are generally straightforward to detect using existing static or signature-based scanning tools.
+    \item \emph{In-the-wild Malicious Models.} The first dataset consists of known malicious models identified by prior research using MalHug. Specifically, this includes 89 models exploiting Pickle serialization vulnerabilities and 15 models abusing Keras custom Lambda layers to execute malicious behaviors. While these models represent real-world threats, their attack methodologies are relatively monolithic, rely on well-known deserialization flaws, and are generally straightforward to detect using existing static or signature-based scanning tools.
     \item \emph{Advanced TensorAbuse Synthetic Corpus.} To address the limitations of the first dataset and evaluate our system against highly stealthy, framework-native attacks, we constructed a second, more challenging dataset using TensorAbuse. We selected 10 diverse foundation models spanning various domains to serve as benign baselines. We then systematically embedded malicious payloads directly into the computational graphs of these models. Specifically, we designed four categories of advanced attacks: File Exfiltration, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition. For each category, we implemented two distinct attack methodologies utilizing TensorAbuse primitives. By embedding each of the 8 unique attack variants into the 10 foundation models, we generated a comprehensive corpus of 80 advanced malicious models across different domains.
 \end{itemize}
 
@@ -64,53 +64,54 @@ All experiments are conducted on a workstation equipped with dual Intel Xeon Sil
 \label{sec:rq1}
 
 To answer this research question, we evaluate the detection performance of MAD and the baseline methods across both the in-the-wild malicious model dataset from MalHug and our advanced TensorAbuse synthetic corpus. This comprehensive evaluation demonstrates MAD's effectiveness in identifying a wide spectrum of malicious activities, ranging from known deserialization exploits to sophisticated framework-native attacks.
-
-\begin{table}[t!]
+\begin{table}[h!]
     \scriptsize
     \centering
-    \caption{Detection performance (Recall/Number of detected malicious models) of MAD and baselines on the in-the-wild MalHug dataset (Total 87 malicious models).}
+    \caption{Detection performance of MAD and baselines on the in-the-wild MalHug dataset (78 malicious models and 11 benign models).}
     \resizebox{0.49\textwidth}{!}{\begin{tblr}{
-        cell{1}{1-2} = {c},
-        cell{2-6}{2} = {c},
+        cell{1}{1-4} = {c},
+        cell{2-6}{2-4} = {c},
         vline{2},
         hline{1,7} = {1pt},
         stretch=0
     }
-    \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{Detected Malicious Models / Total (Recall)} \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & - / 87 (-) \\
-    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & - / 87 (-) \\
-    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & - / 87 (-) \\
-    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & 0 / 87 (0.00\%) \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{78} / 87 (\textbf{89.66\%}) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{Precision} & \SetCell[r = 1, c = 1]{c} \textbf{Recall} & \SetCell[r = 1, c = 1]{c} \textbf{F1} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & 0.8953 & 0.9872 & 0.9390 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & 0.8966 & \textbf{1.0000} & 0.9455 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & 0.8904 & 0.8333 & 0.8609 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & 0.0000 & 0.0000 & 0.0000 \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{1.0000} & 0.9744 & \textbf{0.9870} \\
     \end{tblr} }
     \label{tab:malhug_result}
 \end{table}
 
-\textbf{Performance on In-the-wild Dataset.} We first evaluate the methods on the dataset comprising 87 known malicious models . The results are presented in Table~\ref{tab:malhug_result}. As shown, MAD successfully detects 78 out of the 87 malicious models. It is crucial to note the nature of the 9 models that MAD "missed" which were originally flagged by MalHug. Detailed manual analysis revealed that these specific models merely exploit the inherent mechanics of insecure serialization formats to execute benign, normal operations. Their apparent purpose is to demonstrate the exploitability of the vulnerability as a proof-of-concept, rather than executing genuinely harmful actions such as data exfiltration, unauthorized network access, or privilege escalation. Because MAD relies on a two-stage screening process that evaluates the actual intent of the dynamic behavior, it correctly categorizes these models as non-malicious, demonstrating its robust resilience against false positives driven purely by static vulnerability signatures. In stark contrast, the TensorAbuse detection tool fails to identify any of these models, as its static graph-based approach cannot capture deserialization exploits that occur before or outside the computational graph instantiation.
+\textbf{Performance on In-the-wild Dataset.} We first evaluate the methods on the dataset comprising 89 models in total, consisting of 78 genuinely malicious models and 11 benign proof-of-concept models. It is important to note that the attacks in this dataset primarily rely on inserting malicious payloads through insecure serialization vulnerabilities. Because this specific attack methodology is well-known and extensively studied, traditional static detection tools such as JFrog, Protect AI, and ClamAV achieve relatively high recall rates by relying on established vulnerability signatures. However, these baseline methods exhibit a critical limitation: they fail to distinguish between actual weaponized attacks and the 11 benign models. Detailed manual analysis revealed that these 11 models merely exploit the inherent mechanics of insecure serialization formats to execute normal operations, demonstrating the exploitability of the vulnerability as a proof-of-concept without performing genuinely harmful actions like data exfiltration or unauthorized network access. By simply classifying any model containing a vulnerable signature as malicious, these traditional methods generate significant false positives.
 
-\begin{table}[htbp]
+In contrast, MAD successfully detects 76 out of the 78 genuinely malicious models, while accurately categorizing all 11 proof-of-concept models as non-malicious. Because MAD relies on a two-stage screening process that evaluates the actual intent of the dynamic behavior rather than merely matching static signatures, it demonstrates robust resilience against false positives. Finally, in stark contrast to all other methods, the TensorAbuse detection tool fails to identify any of these models, as its static graph-based approach cannot capture deserialization exploits that occur before or outside the computational graph instantiation.
+
+\begin{table}[h!]
     \scriptsize
     \centering
     \caption{Number of detected malicious models by MAD and baselines on the Advanced TensorAbuse Synthetic Corpus, categorized by attack type (20 models per type, 80 models total).}
     \resizebox{0.49\textwidth}{!}{\begin{tblr}{
-        cell{1}{1-6} = {c},
-        cell{2-6}{2-6} = {c},
+        cell{1-2}{1-6} = {c},
+        cell{3-7}{2-6} = {c},
         vline{2},
-        hline{1,7} = {1pt},
+        hline{1,8} = {1pt},
         stretch=0
     }
-    \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 4]{c} \textbf{Attack Type (Total models)} & \SetCell[r = 2, c = 1]{c} \textbf{Total Detected} \\ \cline{2-5}
-    & \SetCell[r = 1, c = 1]{c} \textbf{File Exfil.} & \SetCell[r = 1, c = 1]{c} \textbf{IP Exposure} & \SetCell[r = 1, c = 1]{c} \textbf{Code Insertion} & \SetCell[r = 1, c = 1]{c} \textbf{Remote Shell} \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & - / 20 & - / 20 & - / 20 & - / 20 & - / 80 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & - / 20 & - / 20 & - / 20 & - / 20 & - / 80 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & - / 20 & - / 20 & - / 20 & - / 20 & - / 80 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\
 
-
-\end{tblr} }
+    \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 4]{c} \textbf{Attack Type (Total models)} & & & & \SetCell[r = 2, c = 1]{c} \textbf{Total Detected} \\ \cline{2-5}
+    & \textbf{File Exfil.} & \textbf{IP Exposure} & \textbf{Code Insertion} & \textbf{Remote Shell} & \\ \hline
+    \textbf{JFrog}       & 20 / 20 & 0 / 20  & 0 / 20  & 10 / 20 & 30 / 80 \\
+    \textbf{Protect AI}  & 20 / 20 & 0 / 20  & 0 / 20  & 20 / 20 & 40 / 80 \\
+    \textbf{ClamAV}      & 0 / 20  & 0 / 20  & 0 / 20  & 0 / 20  & 0 / 80 \\
+    \textbf{TensorAbuse} & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\ \hline
+    \textbf{MAD}         & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\
+    \end{tblr} }
     \label{tab:synthetic_result}
 \end{table}
+
 
 \textbf{Performance on Advanced Synthetic Corpus.} We further evaluate the methods on our rigorously constructed dataset of 80 advanced malicious models, where attacks are deeply embedded within the models' computational graphs. Table~\ref{tab:synthetic_result} provides a detailed breakdown of the detection results across the four distinct attack categories (File Leakage, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition). Both MAD and the TensorAbuse detection tool successfully detect 100\% of the malicious models in this corpus. The TensorAbuse tool achieves perfect detection here because these specific attacks were generated using its own primitive methodologies, making them highly visible to its static API-checking mechanism. However, as demonstrated in Table~\ref{tab:malhug_result}, its static approach fails entirely against attacks outside its predefined scope. 
 
@@ -135,9 +136,9 @@ While achieving a high detection rate is crucial, a practical defense system mus
         stretch=0
     }
     \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{False Positives / Total Benign (FPR)} \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & - / 40 (-) \\
-    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & - / 40 (-) \\
-    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & - / 40 (-) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & 10 / 40 (25.00\%) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & 30 / 40 (75.00\%) \\
+    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & \textbf{0} / 40 (\textbf{0.00\%}) \\
     \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & 40 / 40 (100.00\%) \\ \hline
     \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{0} / 40 (\textbf{0.00\%}) \\
     \end{tblr} }
@@ -161,7 +162,7 @@ To evaluate the practical deployability of MAD, we investigate its impact on the
     \item \emph{Detection Latency:} The time elapsed from the exact moment a malicious operation is initiated by the model to the generation of the final alert (including Autoencoder screening and \ac{llm} reasoning).
 \end{itemize}
 
-\begin{table}[t!]
+\begin{table}[h!]
     \scriptsize
     \centering
     \caption{Runtime performance overhead and detection latency of MAD evaluated on standard foundation models.}
@@ -214,9 +215,9 @@ In this section, we evaluate the contribution of each core component of MAD thro
         stretch=0
     }
     \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{Precision} & \SetCell[r = 1, c = 1]{c} \textbf{Recall} & \SetCell[r = 1, c = 1]{c} \textbf{F1} & \SetCell[r = 1, c = 1]{c} \textbf{Latency (s)} & \SetCell[r = 1, c = 1]{c} \textbf{Token Cost} \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{MAD-S} & - & - & - & - & - \\
-    \SetCell[r = 1, c = 1]{c} \textbf{MAD-L} & - & - & - & - & - \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{-} & \textbf{-} & \textbf{-} & \textbf{-} & \textbf{-} \\
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD-S} & - & - & - & - & 867075 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD-L} & - & - & - & - & 50005 \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{100.00\%} & \textbf{98.31\%} & \textbf{99.15\%} & \textbf{-} & \textbf{57207.1} \\
     \end{tblr} }
     \label{tab:ablation_metrics}
 \end{table}
