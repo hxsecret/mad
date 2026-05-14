@@ -120,14 +120,13 @@ where $\textit{FuncName}$ typically corresponds to security-relevant framework o
         
         $wrapper \gets$ \FConstruct{$target\_func, attr\_name$}\;
         
-        \textbf{try} \\
-        \Indp \textnormal{setattr}($\mathcal{M}, attr\_name, wrapper$)\; \\
-        \Indm \textbf{catch} \textit{ReadOnlyAttributeError} \\
-        \Indp \textbf{continue} \\
+        \textbf{try}\;
+        \Indp \textnormal{setattr}($\mathcal{M}, attr\_name, wrapper$)\; 
+        \Indm \textbf{catch} \textit{ReadOnlyAttributeError} \;
+        \Indp \textbf{continue} \;
         \Indm
     }
 }
-\vspace{0.2cm}
 \Fn{\FConstruct{$func, name$}}{
     \KwRet a closure that captures the full \texttt{traceback}, logs to JSON, executes $func$, and delegates return value\;
 }
