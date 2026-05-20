@@ -200,14 +200,65 @@
 	title= {Hugging Face – The AI community building the future.},
 	note = {https://huggingface.co/},
 	author={Hugging Face},
-	year=2025
+	year=2026
+}
+
+@misc{attackblog1,
+    author = {HiddenLayer},
+    title = {AI Threat Landscape 2026},
+    year = {2026},
+    url = {https://www.hiddenlayer.com/report-and-guide/threatreport2026},
+    note = {Access:2026-05-18}
+}
+
+@misc{attackblog2,
+    author = {HiddenLayer},
+    title = {Hijacking Safetensors Conversion on Hugging Face},
+    year = {2024},
+    url = {https://www.hiddenlayer.com/research/silent-sabotage},
+    note = {Access:2026-05-18}
+}
+@misc{attackblog3,
+    author = {Boyan Milanov},
+    title = {Exploiting ML models with pickle file attacks: Part 2},
+    year = {2024},
+    url = {https://blog.trailofbits.com/2024/06/11/exploiting-ml-models-with-pickle-file-attacks-part-2/},
+    note = {Access:2026-05-18}
+}
+@misc{attackblog4,
+    title = {PyTorch Vulnerable to Remote Code Execution via Untrusted Checkpoint Files},
+    year = {2026},
+    url = {https://github.com/advisories/GHSA-63cw-57p8-fm3p},
+    note = {Access:2026-05-18}
+}
+@misc{litellm1,
+    author = {Peter Girnus and Fernando Tucci and Deep Patel and Simon Dulude and Ashish Verma and John Rainier Navato},
+    title = {Your AI Gateway Was a Backdoor: Inside the LiteLLM Supply Chain Compromise},
+    year = {2026},
+    url = {https://www.trendmicro.com/en_us/research/26/c/inside-litellm-supply-chain-compromise.html},
+    note = {Access:2026-05-18}
+}
+@misc{litellm2,
+    author = {Python Package Index},
+    title = {Incident Report: LiteLLM/Telnyx supply-chain attacks, with guidance},
+    year = {2026},
+    url = {https://blog.pypi.org/posts/2026-04-02-incident-report-litellm-telnyx-supply-chain-attack/},
+    note = {Access:2026-05-18}
+}
+
+@misc{litellm3,
+    author = {unit42},
+    title = {Weaponizing the Protectors: TeamPCP's Multi-Stage Supply Chain Attack on Security Infrastructure},
+    year = {2026},
+    url = {https://origin-unit42.paloaltonetworks.com/teampcp-supply-chain-attacks/},
+    note = {Access:2026-05-18}
 }
 
 @misc{github,
 	title= {GitHub · Change is constant. GitHub keeps you ahead.},
 	note = {https://github.com/},
 	author={Github},
-	year=2025
+	year=2026
 }
 @misc{casey2024largescaleexploitinstrumentationstudy,
       title={A Large-Scale Exploit Instrumentation Study of AI/ML Supply Chain Attacks in Hugging Face Models}, 
@@ -218,27 +269,55 @@
       primaryClass={cs.CR},
       url={https://arxiv.org/abs/2410.04490}, 
 }   
-@inproceedings{modelscan,
-  title={ModelScan: Protection against Model Serialization Attacks},
-  author={protectai},
-  year={2024},
-  url={https://github.com/protectai/modelscan}
+
+@inproceedings{models_are_codes,
+author = {Zhao, Jian and Wang, Shenao and Zhao, Yanjie and Hou, Xinyi and Wang, Kailong and Gao, Peiming and Zhang, Yuanchao and Wei, Chen and Wang, Haoyu},
+title = {Models Are Codes: Towards Measuring Malicious Code Poisoning Attacks on Pre-trained Model Hubs},
+year = {2024},
+isbn = {9798400712487},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3691620.3695271},
+doi = {10.1145/3691620.3695271},
+abstract = {The proliferation of pre-trained models (PTMs) and datasets has led to the emergence of centralized model hubs like Hugging Face, which facilitate collaborative development and reuse. However, recent security reports have uncovered vulnerabilities and instances of malicious attacks within these platforms, highlighting growing security concerns. This paper presents the first systematic study of malicious code poisoning attacks on pre-trained model hubs, focusing on the Hugging Face platform. We conduct a comprehensive threat analysis, develop a taxonomy of model formats, and perform root cause analysis of vulnerable formats. While existing tools like Fickling and ModelScan offer some protection, they face limitations in semantic-level analysis and comprehensive threat detection. To address these challenges, we propose MalHug, an end-to-end pipeline tailored for Hugging Face that combines dataset loading script extraction, model deserialization, in-depth taint analysis, and heuristic pattern matching to detect and classify malicious code poisoning attacks in datasets and models. In collaboration with Ant Group, a leading financial technology company, we have implemented and deployed MalHug on a mirrored Hugging Face instance within their infrastructure, where it has been operational for over three months. During this period, MalHug has monitored more than 705K models and 176K datasets, uncovering 91 malicious models and 9 malicious dataset loading scripts. These findings reveal a range of security threats, including reverse shell, browser credential theft, and system reconnaissance. This work not only bridges a critical gap in understanding the security of the PTM supply chain but also provides a practical, industry-tested solution for enhancing the security of pre-trained model hubs.},
+booktitle = {Proceedings of the 39th IEEE/ACM International Conference on Automated Software Engineering},
+pages = {2087–2098},
+numpages = {12},
+keywords = {pre-trained model hub, code poisoning attacks, LLM supply chain},
+location = {Sacramento, CA, USA},
+series = {ASE '24}
+}
+
+@misc{modelscan,
+      author = {protectai},
+      title = {ModelScan: Protection against Model Serialization Attacks},
+      year = {2021},
+      url = {https://github.com/protectai/modelscan},
+      note = {Access:2026-05-18}
 }
 @misc{fickling,
       author = {ESultanik},
       title = {fickling},
       year = {2021},
       url = {https://github.com/trailofbits/fickling},
-      note = {Access:2025}
+      note = {Access:2026-05-18}
 }
 @misc{picklescanning,
       author = {Hugging Face.},
       title = {Pickle Scanning},
       year = {2024},
       url = {https://huggingface.co/docs/hub/security-pickle#pickle-scanning},
-      note = {Access：2025}
+      note = {Access:2026-05-18}
 }
-
+@misc{digregorio2026insecurityloadingmachinelearning,
+      title={On the (In)Security of Loading Machine Learning Models}, 
+      author={Gabriele Digregorio and Marco Di Gennaro and Stefano Zanero and Stefano Longari and Michele Carminati},
+      year={2026},
+      eprint={2509.06703},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2509.06703}, 
+}
 @INPROCEEDINGS {zhu2025,
 author = { Zhu, Ruofan and Chen, Ganhao and Shen, Wenbo and Xie, Xiaofei and Chang, Rui },
 booktitle = { 2025 IEEE Symposium on Security and Privacy (SP) },
@@ -330,7 +409,7 @@ year = {2016}
 Exposed.},
       year = {2024},
       url = {https://cybersecuritynews.com/deepseek-data-leak-api-keysand-passwords/},
-      note = {Access：2025}
+      note = {Access:2026-05-18}
 }
 
 @misc{huggingfacevulnerability,
@@ -339,5 +418,5 @@ Exposed.},
 Attacks.},
       year = {2024},
       url = {ttps://thehackernews.com/2024/02/new-hugging-facevulnerability-exposes.html},
-      note = {Access：2025}
+      note = {Access:2026-05-18}
 }
