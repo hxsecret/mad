@@ -2,12 +2,14 @@
 \label{sec:design}
 
 In this section, we present the design of our hybrid defense system for detecting malicious behaviors embedded in model artifacts. We first formalize the problem setting and design goals of the system. Then we provide a high-level system overview and detail three core modules that jointly model (i) non-bypassable low-level system-call evidence and (ii) high-dimensional Python semantic context collected via non-invasive instrumentation. Finally, we discuss deployment considerations that enable practical and safe use in real-world analysis environments.
-\begin{figure}[!t]
+\begin{figure*}[!t]
     \centering
-    \includegraphics[width=0.9\linewidth]{figs/overview.pdf}
+    \includegraphics[width=\linewidth]{figs/overview1.pdf}
     \caption{Overview of the hybrid defense system.}
     \label{fig:overview}
-\end{figure}
+\end{figure*}
+
+
 \subsection{System Overview}
 
 \noindent \textbf{Input.} 
