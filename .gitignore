@@ -16,3 +16,5 @@
 main.pdf
 # Latexmk temporary directories
 _minted-*
+main.pdf
+.gitignore
