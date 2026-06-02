@@ -25,7 +25,7 @@ For all datasets, we treat the model artifact as the unit under test. Labels are
 inspection of the payload code and by verifying whether a model performs any
 malicious operation in a sandboxed environment.
 
-\noindent \textbf{Baselines.} We select four malicious model detection methods as baselines. These include three widely adopted third-party detection tools—JFrog~\cite{jfrog}, Protect AI~\cite{protectai}, and ClamAV~\cite{clamav}—which represent the state-of-the-art security scanners currently integrated into the Hugging Face platform, alongside the specialized detection tool provided by the TensorAbuse~\cite{tensorabuse} framework.
+\noindent \textbf{Baselines.} We select four malicious model detection methods as baselines. These include three widely adopted third-party detection tools—JFrog~\cite{jfrog2024huggingface}, Protect AI~\cite{modelscan}, and ClamAV~\cite{clamav}—which represent the state-of-the-art security scanners currently integrated into the Hugging Face platform, alongside the specialized detection tool provided by the TensorAbuse~\cite{zhu2025} framework.
 
 Crucially, for JFrog, Protect AI, and ClamAV, we directly uploaded our constructed model artifacts to the Hugging Face platform. This methodology triggers the platform's live, integrated security scanning pipelines in real time. By doing so, we capture the authentic detection efficacy and assess the actual defensive posture within a real-world AI model supply chain. For the TensorAbuse detection tool, which focuses on statically identifying suspicious API calls embedded within computational graphs, we utilize the open-source implementation provided by the authors. Since these baseline methods primarily rely on static analysis and signature matching without requiring dynamic execution traces or cross-layer alignment, we evaluate their performance directly against the raw model artifacts under these authentic, platform-native conditions to ensure a rigorous and realistic comparison.
 
@@ -65,26 +65,30 @@ All experiments are conducted on a workstation equipped with dual Intel Xeon Sil
 \label{sec:rq1}
 
 To answer this research question, we evaluate the detection performance of MAD and the baseline methods across both the in-the-wild malicious model dataset from MalHug and our advanced TensorAbuse synthetic corpus. This comprehensive evaluation demonstrates MAD's effectiveness in identifying a wide spectrum of malicious activities, ranging from known deserialization exploits to sophisticated framework-native attacks.
+
 \begin{table}[h!]
     \scriptsize
     \centering
-    \caption{Detection performance of MAD and baselines on the in-the-wild MalHug dataset (78 malicious models and 11 benign models).}
+    \caption{Comprehensive detection performance of MAD and baselines across both datasets. MalHug metrics are computed on 78 malicious and 11 benign models; Synthetic Corpus metrics are computed on 80 advanced malicious models with false positives evaluated on 40 benign TensorFlow-API models.}
     \resizebox{0.49\textwidth}{!}{\begin{tblr}{
-        cell{1}{1-4} = {c},
-        cell{2-6}{2-4} = {c},
-        vline{2},
+        cell{1}{1-7} = {c},
+        cell{2-6}{2-7} = {c},
+        vline{2,5},
         hline{1,7} = {1pt},
         stretch=0
     }
-    \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 1]{c} \textbf{Precision} & \SetCell[r = 1, c = 1]{c} \textbf{Recall} & \SetCell[r = 1, c = 1]{c} \textbf{F1} \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & 0.8953 & 0.9872 & 0.9390 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & 0.8966 & \textbf{1.0000} & 0.9455 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & 0.8904 & 0.8333 & 0.8609 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & 0.0000 & 0.0000 & 0.0000 \\ \hline
-    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{1.0000} & 0.9744 & \textbf{0.9870} \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 3]{c} \textbf{MalHug Dataset} & & & \SetCell[r = 1, c = 3]{c} \textbf{Synthetic Corpus} & & \\
+    & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & 0.8953 & 0.9872 & 0.9390 & 0.8889 & 0.3750 & 0.5275 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & 0.8966 & \textbf{1.0000} & 0.9455 & 0.7273 & 0.5000 & 0.5928 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & 0.8904 & 0.8333 & 0.8609 & -- & 0.0000 & -- \\
+    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & -- & -- & -- & 0.6667 & \textbf{1.0000} & 0.8000 \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{MAD} & \textbf{1.0000} & 0.9744 & \textbf{0.9870} & \textbf{1.0000} & \textbf{1.0000} & \textbf{1.0000} \\
     \end{tblr} }
-    \label{tab:malhug_result}
+    \label{tab:combined_result}
 \end{table}
+
+Table~\ref{tab:combined_result} provides an overview of detection performance across both datasets. Two contrasting patterns emerge. On the MalHug dataset, traditional static scanners achieve moderate-to-high F1 scores by matching known deserialization signatures, with MAD marginally outperforming them through precise intent verification. On the Synthetic Corpus, however, the performance gap widens dramatically: static tools degrade sharply, while TensorAbuse's perfect recall is offset by a 0.6667 precision from its inability to distinguish legitimate TensorFlow API usage. Only MAD maintains high performance on both datasets, achieving an F1 of 0.9870 on MalHug and a perfect 1.0000 on the Synthetic Corpus. We next analyze each dataset in detail.
 
 \textbf{Performance on In-the-wild Dataset.} We first evaluate the methods on the dataset comprising 89 models in total, consisting of 78 genuinely malicious models and 11 benign proof-of-concept models. It is important to note that the attacks in this dataset primarily rely on inserting malicious payloads through insecure serialization vulnerabilities. Because this specific attack methodology is well-known and extensively studied, traditional static detection tools such as JFrog, Protect AI, and ClamAV achieve relatively high recall rates by relying on established vulnerability signatures. However, these baseline methods exhibit a critical limitation: they fail to distinguish between actual weaponized attacks and the 11 benign models. Detailed manual analysis revealed that these 11 models merely exploit the inherent mechanics of insecure serialization formats to execute normal operations, demonstrating the exploitability of the vulnerability as a proof-of-concept without performing genuinely harmful actions like data exfiltration or unauthorized network access. By simply classifying any model containing a vulnerable signature as malicious, these traditional methods generate significant false positives.
 
@@ -114,7 +118,7 @@ In contrast, MAD successfully detects 76 out of the 78 genuinely malicious model
 \end{table}
 
 
-\textbf{Performance on Advanced Synthetic Corpus.} We further evaluate the methods on our rigorously constructed dataset of 80 advanced malicious models, where attacks are deeply embedded within the models' computational graphs. Table~\ref{tab:synthetic_result} provides a detailed breakdown of the detection results across the four distinct attack categories (File Leakage, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition). Both MAD and the TensorAbuse detection tool successfully detect 100\% of the malicious models in this corpus. The TensorAbuse tool achieves perfect detection here because these specific attacks were generated using its own primitive methodologies, making them highly visible to its static API-checking mechanism. However, as demonstrated in Table~\ref{tab:malhug_result}, its static approach fails entirely against attacks outside its predefined scope. 
+\textbf{Performance on Advanced Synthetic Corpus.} We further evaluate the methods on our rigorously constructed dataset of 80 advanced malicious models, where attacks are deeply embedded within the models' computational graphs. Table~\ref{tab:synthetic_result} provides a detailed breakdown of the detection results across the four distinct attack categories (File Leakage, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition). Both MAD and the TensorAbuse detection tool successfully detect 100\% of the malicious models in this corpus. The TensorAbuse tool achieves perfect detection here because these specific attacks were generated using its own primitive methodologies, making them highly visible to its static API-checking mechanism. However, as demonstrated in Table~\ref{tab:combined_result}, its static approach fails entirely against attacks outside its predefined scope. 
 
 Conversely, MAD achieves this 100\% detection rate without relying on static signatures or predefined API lists. By statistically profiling the benign baseline behaviors of models like BERT and VGG16, and dynamically intercepting the anomalous system calls generated by the malicious payloads such as unexpected network connections or file reads, MAD accurately identifies the malicious intent regardless of the specific attack vector employed. The performance of the remaining baseline tools—JFrog, Protect AI, and ClamAV—varies significantly across the different attack categories, highlighting the limitations of traditional scanning tools when faced with sophisticated, framework-native manipulations.
 
