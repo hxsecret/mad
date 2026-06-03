@@ -50,7 +50,7 @@ This module processes raw system-call traces captured during model execution and
 %% [Challenge: raw syscalls are too fine-grained] 
 However, directly modeling individual system calls is impractical because they are extremely fine-grained and voluminous. A single model loading process may produce tens of thousands of system calls. Moreover, meaningful malicious behavior invariably manifests as a \emph{sequence} of related calls rather than as isolated events. Accordingly, by aggregating correlated system calls into high-level operational units, this module could reduces trace noise, compresses data volume, and outputs standardized analysis units with complete semantics that facilitate subsequent anomaly detection computations.
 
-\begin{table}[htbp]
+\begin{table}[t!]
 	\centering
 	\caption{Security-relevant system-call categories used by our filter.}
 	\begin{tabular}{l p{0.28\columnwidth} p{0.45\columnwidth}}
@@ -128,7 +128,7 @@ The core of our approach lies in a rigorously structured prompt template that co
 %% [Why: version adaptivity] Regenerating wrappers for new API surfaces suffices---the core detection pipeline remains unchanged across framework versions.
 The instrumentation is designed to be adaptive: when the underlying framework version changes, we only need to regenerate the wrappers for the new API surface, without changing the core detection pipeline. This enables broad coverage across diverse model frameworks while keeping manual engineering effort low.
 
-\begin{algorithm}[htbp]
+\begin{algorithm}[t!]
 \caption{Automated Dynamic Instrumentation Logic}
 \label{alg:instrumentation}
 \KwIn{Target library module $\mathcal{M}$ (e.g., \texttt{torch}, \texttt{tensorflow})}

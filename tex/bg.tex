@@ -9,7 +9,7 @@ The widespread sharing of models further demonstrates the critical role of the m
 \noindent\textbf{AI model supply chain attack.}While this model sharing paradigm greatly facilitates collaborative innovation, it simultaneously introduces severe security vulnerabilities to the AI model supply chain. Recent security reports have uncovered structural vulnerabilities on platforms such as Hugging Face~\cite{siddiq2026empiricalstudyremotecode}. Consequently, a surge of real-world malicious attacks targeting this supply chain has been reported~\cite{attackblog1}. As illustrated in Figure~\ref{fig:attack}, the typical workflow of these attacks involves malicious actors uploading compromised models to public hubs; these models are specifically designed to execute hidden payloads when downloaded and deployed by unsuspecting users. These supply chain attacks are not merely theoretical; they have already resulted in the large-scale theft of user credentials and the illicit exploitation of Large Language Model API tokens, causing significant financial and operational damage to the affected organizations~\cite{litellm1}.
 
 
-\begin{figure}[htbp]
+\begin{figure}[t!]
     \centering
     \includegraphics[width=0.9\linewidth]{figs/attack.pdf}
     \caption{The workflow of an AI model supply chain attack.}
@@ -36,7 +36,7 @@ Insecure serialization attacks arise from a fundamental trade-off between archit
 The vulnerability level of a model heavily depends on its storage paradigm. Formats designed to preserve both the complex model architecture and the learned weights pose the highest risk. 
 For example, the native Python pickle module and its derivative formats, which are widely adopted by PyTorch and Scikit-learn, support arbitrary object instantiation and are highly vulnerable to code injection attacks.~\cite{python_pickle, liu2025arthideseekmaking}. Similarly, TensorFlow's SavedModel and Keras's HDF5~\cite{hdf5} formats encapsulate rich execution graphs or custom layer definitions, presenting potential attack surfaces when loading untrusted artifacts. In contrast, modern formats restricted to storing only raw numerical weights are inherently secure against direct code injection. Prominent examples include Hugging Face's Safetensors~\cite{safetensors2023}, which strictly parses flat tensor data, and the Open Neural Network Exchange(ONNX) format~\cite{onnx2019}, which relies on a rigid schema rather than executable logic. Table~\ref{tab:formats} summarizes the security posture of these widely used model serialization formats.
 
-\begin{table}[h!]
+\begin{table}[t!]
     \scriptsize
     \centering
     \caption{model formats and their vulnerability to code injection attacks.}
