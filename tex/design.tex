@@ -3,9 +3,9 @@
 
 %% [Section roadmap] This section presents the hybrid defense system design: problem setting, system overview, three core modules, and deployment considerations.
 In this section, we present the design of our hybrid defense system for detecting malicious behaviors embedded in model artifacts. We first formalize the problem setting and design goals of the system. Then we provide a high-level system overview and detail three core modules that jointly model (i) non-bypassable low-level system-call evidence and (ii) high-dimensional Python semantic context collected via non-invasive instrumentation. Finally, we discuss deployment considerations that enable practical and safe use in real-world analysis environments.
-\begin{figure*}[!t]
+\begin{figure*}[t!]
     \centering
-    \includegraphics[width=\linewidth]{figs/overview1.pdf}
+    \includegraphics[width=\linewidth]{figs/overview2.pdf}
     \caption{Overview of the hybrid defense system.}
     \label{fig:overview}
 \end{figure*}
@@ -50,7 +50,7 @@ This module processes raw system-call traces captured during model execution and
 %% [Challenge: raw syscalls are too fine-grained] 
 However, directly modeling individual system calls is impractical because they are extremely fine-grained and voluminous. A single model loading process may produce tens of thousands of system calls. Moreover, meaningful malicious behavior invariably manifests as a \emph{sequence} of related calls rather than as isolated events. Accordingly, by aggregating correlated system calls into high-level operational units, this module could reduces trace noise, compresses data volume, and outputs standardized analysis units with complete semantics that facilitate subsequent anomaly detection computations.
 
-\begin{table}[t!]
+\begin{table}[htbp]
 	\centering
 	\caption{Security-relevant system-call categories used by our filter.}
 	\begin{tabular}{l p{0.28\columnwidth} p{0.45\columnwidth}}
@@ -128,7 +128,7 @@ The core of our approach lies in a rigorously structured prompt template that co
 %% [Why: version adaptivity] Regenerating wrappers for new API surfaces suffices---the core detection pipeline remains unchanged across framework versions.
 The instrumentation is designed to be adaptive: when the underlying framework version changes, we only need to regenerate the wrappers for the new API surface, without changing the core detection pipeline. This enables broad coverage across diverse model frameworks while keeping manual engineering effort low.
 
-\begin{algorithm}[t!]
+\begin{algorithm}[htbp]
 \caption{Automated Dynamic Instrumentation Logic}
 \label{alg:instrumentation}
 \KwIn{Target library module $\mathcal{M}$ (e.g., \texttt{torch}, \texttt{tensorflow})}
@@ -217,8 +217,8 @@ Our maliciousness judgment follows a principled cross-layer reasoning rule: a be
 \noindent \textbf{Fail-safe behavior.} If high-risk system-call patterns appear without any plausible semantic explanation (e.g., sensitive network connection with no corresponding high-level network API context), the system raises a high-severity alert and can optionally block execution in the controlled environment.
 
 \subsection{Deployment Considerations}
-%% [Controlled sandbox execution] Analysis runs in a least-privilege environment with optional network isolation to contain confirmed malicious behaviors.
-\noindent \textbf{Controlled execution.} The design assumes model analysis runs in a controlled environment with least privilege and optional network isolation, so that confirmed malicious behaviors can be contained.
+%% [Deployment: MAD operates in pre-deployment fuzzing pipeline, not production serving, with acceptable overhead as shown in evaluation]
 
-%% [Extensible architecture] Instrumentation templates and operation features can be expanded for new frameworks and behaviors without pipeline changes.
-\noindent \textbf{Extensibility.} The instrumentation templates can be expanded as new framework APIs emerge; similarly, operation features can be extended to cover new low-level behaviors without changing the overall pipeline.
+\noindent \textbf{Pre-deployment fuzzing workflow.} MAD is designed to operate in a pre-deployment model vetting pipeline rather than in production inference serving. During this vetting phase, a model artifact is executed in a controlled sandbox environment while MAD monitors its behavior. To trigger potentially hidden malicious logic, we employ fuzzing-based testing\cite{}: the model is exercised through a diverse set of operations that simulate realistic business workloads, including loading with varied input shapes, invoking inference across different batch sizes, and exercising serialization and checkpointing paths. This fuzzing strategy increases the likelihood of activating dormant malicious payloads that may only execute under specific runtime conditions, providing comprehensive coverage beyond simple model loading.
+
+\noindent \textbf{Runtime overhead and deployability.} The primary concern for any runtime defense is its performance impact on the testing workflow. As detailed in our evaluation (Section~\ref{sec:evaluation}), MAD introduces an average execution time overhead of only 5.69\% across diverse model architectures, with the overhead amortized over prolonged inference sessions. Within a pre-deployment fuzzing pipeline, this level of overhead is entirely acceptable: the vetting phase is an offline, one-time process conducted before models are released to production, and the marginal additional latency does not affect end-user serving performance. Furthermore, MAD's LLM-based reasoning is only invoked on operations flagged as abnormal by the Autoencoder prefilter, so its token cost scales with the number of truly suspicious events rather than with total runtime, further bounding the operational expense.
