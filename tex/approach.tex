@@ -163,8 +163,8 @@ If high-risk system-call patterns appear without any plausible semantic explanat
 
 
 \subsection{Model Vetting Pipeline}
-%% [Deployment: MAD operates in pre-deployment fuzzing pipeline, not production serving]
+%% [Deployment: \toolname{} operates in pre-deployment fuzzing pipeline, not production serving]
 
-MAD is designed to operate in a pre-deployment model vetting pipeline rather than in production inference serving. Before a model is released or integrated into any production system, it should undergo a comprehensive security vetting phase in a controlled sandbox environment with MAD monitoring its behavior to detect embedded malicious logic.
+\toolname{} is designed to operate in a pre-deployment model vetting pipeline rather than in production inference serving. Before a model is released or integrated into any production system, it should undergo a comprehensive security vetting phase in a controlled sandbox environment with \toolname{} monitoring its behavior to detect embedded malicious logic.
 
 To maximize detection coverage, we recommend exhaustive fuzzing-based testing of all real-world business workflows that the model will encounter post-deployment. Concretely, the model should be exercised through every anticipated usage scenario: loading with all expected input shapes and data types, invoking inference across the full range of supported batch sizes, exercising all serialization, checkpointing, and fine-tuning paths, and simulating edge-case inputs that stress runtime boundaries. This fuzzing strategy ensures that dormant malicious payloads—which may be conditionally triggered only under specific runtime conditions, input patterns, or execution phases—are activated and exposed during testing, providing comprehensive coverage beyond simple model loading.
