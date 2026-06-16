@@ -1,95 +1,170 @@
-\begin{figure*}[!t]
+\section{Approach}
+\label{sec:approach}
+
+In this section, we present our approach for detecting malicious behaviors embedded in model artifacts. The pipeline operates in three stages: (i) \emph{Data Collection}, which gathers two synchronized evidence streams—low-level system-call traces and high-level Python semantic logs; (ii) \emph{Coarse-grained Filtering}, which clusters raw system calls into operation vectors, screens for anomalies via an unsupervised autoencoder, and retrieves aligned semantic context through fuzzy spatio-temporal matching; and (iii) \emph{Fine-grained Verification}, where an LLM jointly reasons about the system-call evidence and Python semantic context to produce an intent score, a threat category, and an auditable evidence chain.
+
+\begin{figure*}[t!]
     \centering
-    \includegraphics[width=\textwidth]{fig/workflow.pdf}
-    \caption{Workflow of \toolname.}
-    \label{fig:workflow}
+    \includegraphics[width=\linewidth]{figs/overview3.pdf}
+    \caption{Overview of the hybrid defense system.}
+    \label{fig:overview}
 \end{figure*}
 
+\subsection{Data Collection}
 
-\section{Design}\label{sec:design}
-In this section, we present the design of \toolname for detecting promotion abuse fraud. We first introduce the multi-relation fusion method to represent the relationship between users in multiple dimensions. Then we present the multi-relation fused homogeneous graph with attention mechanism to conjointly analyze the transaction behavior in multiple dimensions. Finally, we propose a semi-supervised learning method with an autoencoder to enhance the scalability in detecting fraudsters in the real-world production environment. The workflow of \toolname is illustrated in Figure~\ref{fig:workflow}.
+The data collection stage simultaneously captures two synchronized streams of evidence during controlled model execution: a kernel-visible system-call stream and an application-layer semantic log stream. Together, these streams provide the complementary low-level and high-level signals needed for downstream analysis.
 
+\subsubsection{System-call collection.}
+We base our detection on system-call traces because they operate below the user-space level and cannot be bypassed by any Python-level obfuscation~\cite{2875487}: no matter how a model artifact hides its malicious intent through code mangling or dynamic loading, its actual interactions with the operating system must traverse the kernel and therefore leave a non-bypassable forensic record.
 
-\subsection{Multi-relation Fusion}\label{sec:design:relation}
-Spatial and temporal relations are crucial for detecting promotion abuse fraud. Relying solely on individual relations may be insufficient to effectively capture fraudulent activities and differentiate them from normal transactions. Therefore, it is essential to explore the relationships between users across multiple dimensions.
-To address this challenge, we propose a multi-relation fusion method that integrates spatial and temporal information to represent the complex relationships between users. This method comprises two key steps: relation embedding and weighted concatenation. The relation embedding step utilizes \ac{kg} embeddings to capture intricate user relationships and generate embeddings for each relation. Then the weighted concatenation of these embeddings is performed to incorporate spatial and temporal information, as well as to quantify the strength of user relationships across different dimensions.
+\begin{table}[t!]
+	\centering
+	\caption{Security-relevant system-call categories used by our filter.}
+	\begin{tabular}{l p{0.28\columnwidth} p{0.45\columnwidth}}
+		\hline
+		Filter param & Category & Purpose \\
+		\hline
+		file   & File operations (\texttt{read}/\texttt{write}) & Detect sensitive data leakage or configuration file tampering \\
+		network & Network operations (\texttt{socket}) & Detect data exfiltration or remote command execution \\
+		cred   & Credential operations (\texttt{setuid}) & Detect privilege-escalation behavior \\
+		desc   & Descriptor operations (\texttt{dup}) & Assist file-related anomaly detection \\
+		signal & Signal handling (\texttt{kill}) & Capture malicious process termination attempts \\
+		clock  & Time-related operations & Assist temporal anomaly analysis (e.g., abnormal delays) \\
+		\hline
+	\end{tabular}
+	\label{tab:syscalltypes}
+\end{table}
 
-\noindent \textbf{\ac{kg}-based Relation Embedding.} 
-To initialize the relation embedding, we leverage \ac{kg}~\cite{hogan2021knowledge,10.1145/3658644.3690354} embedding techniques due to their effectiveness in capturing complex relationships between entities. \ac{kg} is effective in representing entities and their interrelations through triples of the form $(h, r, t)$, where $h$ and $t$ are entities, and $r$ is the relation between them.
-Existing \ac{kg} embedding methods~\cite{bordes2013translating, wang2014knowledge, lin2015learning, sun2019rotate, yang2015embedding} learn the embedding for entities and relations that satisfy $e_{h} + e_{r} \approx e_{t}$, where $e_{h}$, $e_{r}$, and $e_{t}$ are vectors in high dimensions. 
-In our scenario, the relation between users in the dimension of $r_{1}$ can be represented as two triple $(u_{i}, r_{1}, u_{j})$ and $(u_{j}, r_{1}, u_{i})$, where $u_{i}$ and $u_{j}$ represent users and $r_{1}$ represents the relation type. We represent this relation between user $u_{i}$ and user $u_{j}$ in two triples because the relation between users is symmetric in the dimension of $r_{1}$.
-In this way, the \ac{kg} can represent the relationship between users in multiple dimensions. TransR~\cite{lin2015learning} is particularly suitable for our needs as it can handle 1-to-N, N-to-1, and N-to-N relationships, which are common in user relationships in e-commerce platforms.
+We employ a selective tracing strategy that focuses exclusively on security-relevant system-call families, discarding high-frequency but semantically uninformative calls to keep the trace volume manageable. During controlled model execution, we use \texttt{strace} to continuously trace system calls of the target process. To reduce noise and overhead, we immediately discard calls such as scheduler hints and memory-mapping operations that carry no security signal\cite{shakya2022analysisdetectionclassificationandroid}. The selection concentrates on system-call categories that can indicate malicious intent. Table~\ref{tab:syscalltypes} summarizes the security-relevant syscall families we monitor and their roles in our detection pipeline. For example, file operations can reveal attempts to access sensitive data or modify configurations, while network operations may signal data exfiltration or remote command execution.
 
-Formally, TransR embeds user entities $u_{i}, u_{j}$ and relation $r$ into vectors $\mathbf{e}_{u_{i}}, \mathbf{e}_{u_{j}} \in \mathbb{R}^{d}, \mathbf{e}_{r} \in \mathbb{R}^{k}$. For each relation $r$, it specifies a projection matrix $\mathbf{W}_{r} \in \mathbb{R}^{d \times k}$ to project the user entities from $d$-dimensional space to $k$-dimensional space. The embedding of the relation $r$ is calculated as $\mathbf{e}^{r}_{u_{i}} = \mathbf{e}_{u_{i}}\mathbf{W}_{r}$. The score function of TransR model is defined as $f_{r}(i,j) = ||\mathbf{e}_{u_{i}}^{r} + \mathbf{e}_{r} - \mathbf{e}_{u_{j}}^{r}||$, where $||\cdot||$ denotes the L1-norm distance function. To optimize the TransR model, we follow the margin-based score function as the objective for training
-\begin{equation}\label{eqa:transr}
-\mathcal{L}_{r} = \sum_{(i,r,j)\in S} \sum_{(i',r,j')\in S'} \max(0,f_{r}(i,j) + \gamma - f_{r}(i',j'))
-\end{equation}
-, where $S$ and $S'$ are the positive and negative triple sets, respectively, and $\gamma$ is the margin hyperparameter.
-However, the embedding learning of TransR cannot deal with the new entities as it can only learn the embedding of the entities that appear in the training set. 
-While in our scenario, the new users may appear in the production environment.
-To address this challenge, we only use the embeddings of the relations $E_{r} = \{\mathbf{e}_{r_{1}}, \mathbf{e}_{r_{2}}, ..., \mathbf{e}_{r_{|\mathcal R|}}\}$ to initialize the relation embedding for later training. 
+\subsubsection{Instrumentation log collection.}
+To bridge the semantic gap between model-level intent and kernel-level behavior, we collect high-dimensional Python semantic context via non-invasive instrumentation. The key challenge is that heterogeneous ML frameworks expose frequently changing APIs, making manual per-framework instrumentation labor-intensive and coverage-incomplete. We address this through an LLM-assisted approach with two distinct phases.
 
-\noindent \textbf{Weighted Concatenation.}
-After getting the embeddings of each type of relation, we propose a weighted concatenation method to get the final embedding of the relation between users.  
-Although the high cohesion in spatial and temporal is the fundamental characteristic of fraud transactions, users can show different cohesion in different dimensions. For example, the users can show high cohesion in the dimension of the geohash and the dimension of the promotion, but they may show low cohesion in the dimension of the chat room. To better capture the divergence of the cohesion in different dimensions, we propose concatenating the embeddings of the relations into one vector. We utilize the concatenation operation because it can better capture the cohesion in multiple dimensions compared with the mean operation. A naive approach is to concatenate the embeddings of each type of relation if there is a relation between users, otherwise set the embedding of the relation to zero. However, this approach cannot capture the strength of the relationship between users in different dimensions. Existing \ac{kg} embedding methods treat all the relations equally and do not consider the strength of each relation.
+\noindent \textbf{Pre-execution: API Discovery and Script Generation.}
+Before model execution, we leverage an LLM to synthesize dynamic instrumentation scripts. A rigorously structured prompt constrains the LLM to generate code that inspects the target module's namespace at startup, systematically identifies all public callable attributes, and constructs wrapper closures around each. The prompt specifies the security objective, mandates capturing execution context (timestamps, operation types, argument values, return types, and full call stacks via \texttt{traceback}), and requires all intercepted events to be serialized into standardized JSON. This automated discovery eliminates statically hardcoded API lists and adapts to framework version changes by simply regenerating wrappers for the new API surface, without modifying the core detection pipeline.
 
-To consider the strength of the relations between users, we propose to concatenate the relation embeddings with the weighted concatenation to get the final embeddings $\mathcal F$ of the relations between users. 
-As we have discussed in Section~\ref{sec:study:analysis}, the co-occurrence frequency of users in different spatial relations, denoted as $w_{r}^{ij}$, effectively quantifies the strength of temporal cohesion of users. This metric captures the strength of relationships across various dimensions. Fraudsters are typically organized in groups and exhibit higher value of this metric in spatial relations compared to normal users.
-Therefore we can utilize $w_{r}^{ij}$ to quantify the strength of the relations between users. Therefore, the final embeddings of the relations between users are calculated as follows:
+Algorithm~\ref{alg:instrumentation} formalizes this discovery and wrapping logic. The \texttt{ApplyDynamicPatches} procedure isolates public callables while skipping private attributes and non-callable objects, then generates wrapper closures for each target API.
 
+\begin{algorithm}[t!]
+\caption{Automated Dynamic Instrumentation Logic}
+\label{alg:instrumentation}
+\KwIn{Target library module $\mathcal{M}$ (e.g., \texttt{torch}, \texttt{tensorflow})}
+\KwOut{Instrumented module capable of context logging}
+
+\SetKwProg{Fn}{Procedure}{:}{}
+\SetKwFunction{FApply}{ApplyDynamicPatches}
+\SetKwFunction{FConstruct}{Wrapper}
+
+\Fn{\FApply{$\mathcal{M}$}}{
+    \ForEach{attribute name $attr\_name$ \textnormal{\textbf{in}} \textnormal{dir}($\mathcal{M}$)}{
+        \If{$attr\_name$ starts with ``\_''}{
+            \textbf{continue} 
+        }
+        
+        $target\_func \gets$ \textnormal{getattr}($\mathcal{M}, attr\_name$)\;
+        \If{\textnormal{\textbf{not}} is\_callable($target\_func$)}{
+            \textbf{continue} 
+        }
+        
+        $wrapper \gets$ \FConstruct{$target\_func, attr\_name$}\;
+        
+        \textbf{try}\;
+        \Indp \textnormal{setattr}($\mathcal{M}, attr\_name, wrapper$)\; 
+        \Indm \textbf{catch} \textit{ReadOnlyAttributeError} \;
+        \Indp \textbf{continue} \;
+        \Indm
+    }
+}
+\Fn{\FConstruct{$func, name$}}{
+    \KwRet a closure that captures the full \texttt{traceback}, logs to JSON, executes $func$, and delegates return value\;
+}
+\end{algorithm}
+
+\noindent \textbf{Runtime: Wrapper Injection and Context Logging.}
+At process startup, the generated script employs monkey patching (\texttt{setattr}) to replace original functions with wrapper closures. Thereafter, any invocation of a wrapped API triggers the injected closure, which captures the execution context and serializes it as a structured semantic event:
 \begin{equation}
-    \mathbf{f}_{ij} = \mathbin\Vert_{r = 1}^{|\mathcal R|}
-    \begin{cases}
-        \hfil w_{r}^{ij} \cdot \mathbf{e_{r_{i}}}&, m_{ij}(r) = 1 \\
-        \hfil \mathbf{0} & , m_{ij}(r) = 0 \\
-    \end{cases}
+\ell_i = \langle \textit{FuncName},\; \textit{ArgsSummary} \rangle.
 \end{equation}
-, where $m_{ij}$ is the relation map and $m_{ij}(r)$ represents whether there is relation $r$ between users $u_{i}$ and $u_{j}$, $\mathbin\Vert$ is the concatenation operation. If there is no relation between users $u_{i}$ and $u_{j}$ in the dimension $r$, we set the embedding of the relation as vector $\mathbf{0}$, which is the same size as the embedding of the relation. Then we get the final embeddings of the relations between users $\mathcal F = \{\mathbf{f}_{ij}\}$ considering both the spatial and temporal information.
+Here $\textit{FuncName}$ denotes the invoked framework or standard-library API, while $\textit{ArgsSummary}$ aggregates only lightweight information—tensor shapes and dtypes, configuration flags, truncated or hashed file paths, and bounded-length string summaries—controlling logging overhead while preserving rich contextual signals.
 
-\subsection{Group-based Fraud Detection}
-Having obtained the fused embedding relations between users, the objective is to detect fraudsters involved in promotion abuse on the multi-relation fused homogeneous graph. 
-Fraudsters conduct fraudulent transactions in groups and exhibit high cohesion across multiple dimensions, which is reflected in the embeddings of the relations between users. Consequently, they form more condensed clusters in various dimensions on the graph compared to normal users.
-To discover this condensed characteristic, we propose a fraud detection algorithm based on a multi-relation fused homogeneous graph. The detection workflow comprises three main modules: attention-based feature aggregation for learning user representations, a semi-supervised autoencoder for detecting fraudster seeds and anomaly propagation for identifying fraudulent neighbors in the same group. 
+To ensure runtime safety, wrappers follow a conservative policy: they only wrap callable functions (avoiding class definitions, built-in types, and C/C++ bindings), perform best-effort argument summarization without altering return values or side effects, and employ defensive serialization (e.g., recording shapes instead of raw tensor contents). The patching process is additionally wrapped in \texttt{try-except} blocks to survive read-only properties, immutable C-extension bindings, and dynamically generated descriptors that would otherwise crash the process. Any patch failure degrades gracefully without disrupting the target process.
 
-\noindent\textbf{Attention-based Node Feature Aggregation.} 
-This module takes the multi-relation fused homogeneous graph $\mathcal{G}$ as input. Its goal is to compute user node features $\mathbf{h}_i'$ based on fused relation embeddings, enabling clear distinctions between fraudulent and normal users. Fraudsters engaged in promotion abuse fraud often operate in groups and exhibit high cohesion across multiple dimensions. To capture this behavior, we employ a \ac{gnn} to aggregate features from neighboring nodes $\mathcal{N}(i)$.
-Since fraudsters are not always malicious, the influence of neighbors on a node's behavior varies. To address this, we use an attention mechanism to assign adaptive weights to neighbors, prioritizing those showing strong cohesion across dimensions. To better detect fraudulent behaviors regardless of promotion strategy, user node features are initialized as uniform vectors.
-The attention score $\alpha_{ij}$ between user $i$ and user $j$ is calculated based on the node feature $\mathbf{h}_i$ and their edge feature $\mathbf{f}_{ij}$. Node features are then aggregated using these attention scores, as follows:
+\subsection{Coarse-grained Filtering}
 
+After collecting raw evidence streams, the coarse-grained filtering stage transforms system-call traces into compact operation vectors, screens for anomalies, and retrieves the corresponding semantic context. This stage eliminates clearly benign activity before the expensive LLM reasoning stage.
+
+\subsubsection{System-call Clustering and Embedding}
+
+The collected system-call traces are extremely fine-grained and voluminous. A single model loading process may produce thousands of system calls, and meaningful malicious behavior invariably manifests as a \emph{sequence} of related calls rather than as isolated events. To address this, we aggregate correlated system calls into compact, high-level operation vectors that reduce trace noise, compress data volume, and provide standardized analysis units with complete semantics for downstream anomaly detection.
+
+To accurately model the execution semantics of a program, it is crucial to recognize that system calls inherently possess varying degrees of contextual dependency. Applying a uniform extraction strategy to all system calls would be ineffective: some operations are semantically self-contained and immediately indicative of high-risk behavior, whereas others are granular, stateful operations that remain ambiguous unless analyzed as a continuous sequence. Motivated by this fundamental difference, we propose a hybrid embedding scheme that categorizes the traced system calls into two distinct streams for targeted handling: (1) \emph{Directly malicious calls} and (2) \emph{Stateful calls}. By processing these two streams individually, we ultimately synthesize them into a unified feature space for downstream analysis.
+
+\noindent \textbf{Direct call embedding.}
+The first category includes standalone, high-risk operations (e.g., \texttt{execve}, \texttt{chmod}) that do not require lifecycle context. We directly encode each of these calls into a fixed-dimension operation vector $\mathbf{v}_{\textit{dir}} \in \mathbb{R}^{d}$. Specifically, we utilize a pre-trained BERT-based model to extract the rich semantic meaning from the call's underlying logic and literal arguments. This high-dimensional representation is subsequently projected down to the target dimension $d$, ensuring that semantically critical, self-contained threats are instantly captured without the need for sequence aggregation.
+
+\noindent \textbf{Stateful aggregation.}
+Let $S = \{(s_k, \tau_k)\}_{k=1}^{N}$ denote the traced system-call stream, where $s_k$ is the $k$-th syscall and $\tau_k$ its timestamp. For stateful operations, we maintain per-resource state keyed by $r = \langle \textit{PID}, \textit{FD} \rangle$, where $\textit{FD}$ denotes a file or socket descriptor. For each key $r$, we collect the indices of calls that operate on this resource within one lifecycle segment,
 \begin{equation}
-    \alpha_{ij} = \frac{1}{l} \sum_{k = 1}^{l} \text{LeakyReLU}(\mathbf{h}_{i}\mathbf{W}_{k}(\mathbf{f}_{ij}\mathbf{W})^{T})
+I_r = \{\, k \mid (s_k, \tau_k) \in S,\ s_k \text{ uses resource } r,\ \tau_{\textit{start}}^r \le \tau_k \le \tau_{\textit{end}}^r \,\},
 \end{equation}
+where $\tau_{\textit{start}}^r$ and $\tau_{\textit{end}}^r$ are the timestamps of the resource-acquisition and resource-release calls (e.g., \texttt{open} / \texttt{close} or \texttt{socket} / \texttt{shutdown}). The lifecycle segment for resource $r$ is then the ordered subsequence $S_r = \{(s_k, \tau_k)\}_{k \in I_r}$.
 
+We aggregate this segment into a fixed-length operation vector by applying a feature-extraction function $\phi$ over all calls in the segment:
 \begin{equation}
-    \mathbf{h}_i' = \sum_{j \in \mathcal{N}(i)} \alpha_{ij} \mathbf{h}_j
+\mathbf{v}_{\textit{sys}}(r) = \phi(S_r) \in \mathbb{R}^{d},
 \end{equation}
+where $\phi$ operates by extracting the common resource identifier $r = \langle \textit{PID}, \textit{FD} \rangle$ shared across the segment $S_r$, and concatenating it with the sequence of distinct, call-specific parameters (e.g., flags, buffer sizes, or return values) derived from each individual system call $s_k \in S_r$. This concatenated feature sequence is subsequently passed through an embedding layer to project it into the continuous $\mathbb{R}^{d}$ space. Intuitively, each $\mathbf{v}_{\textit{sys}}(r)$ captures a dense, contextualized representation of the exact data flow and state transitions associated with a specific file or connection during its lifetime, effectively smoothing out scheduling artifacts and interleaving from other threads.
 
-, where $\mathbf{W}_{k} \in \mathbb{R}^{D_{n} \times D_{a}}$ and $\mathbf{W} \in \mathbb{R}^{D_{e} \times D_{a}}$ are weight matrices, $D_{a}$ represents the attention size, and $l$ is the number of attention layers.
+The final feature matrix combines $\mathbf{v}_{\textit{dir}}$ and $\mathbf{v}_{\textit{sys}}$, enabling the system to capture both direct and aggregated syscall behaviors. This hybrid representation ensures that directly malicious actions are immediately flagged, while stateful operations are analyzed in context to detect more subtle threats.
 
+\subsubsection{Autoencoder-based Anomaly Detection}
 
-\noindent\textbf{Semi-supervised AutoEncoder.}
-The aggregated node features $\mathbf{h}_i'$ are input to a semi-supervised autoencoder designed to identify fraudulent users.
-In real-world scenarios, user labels are often limited, with only a small proportion of users accurately labeled through manual inspection. Additionally, fraudsters may change their behaviors in response to changes in promotion strategies. To address these challenges, we use a semi-supervised autoencoder to guide training and maintain the model's generalization based on the fact that fraudsters are rare and most users are normal.
-The autoencoder consists of an encoder—a multi-layer perceptron mapping node features to a latent space—and a decoder that reconstructs node features $\mathbf{h}_i^*$ from the latent space. It is trained to minimize the reconstruction loss $l = ||\mathbf{h}_i' - \mathbf{h}_i^{*}||_{2}$. 
+We adopt unsupervised anomaly detection because benign model loading and inference produce a stable, learnable distribution of system-call operations, whereas malicious behaviors are inherently rare and diverse, making supervised classification impractical without labeled attack samples that cover the full threat space. Among unsupervised methods, we choose an Autoencoder for its conceptual simplicity and proven effectiveness in reconstruction-based anomaly detection: it learns to faithfully reconstruct benign operation vectors during training and naturally flags any vector it cannot faithfully reconstruct as anomalous.
 
-
-The model's total loss comprises three components: the relation embedding loss $\mathcal{L}_{r}$ as defined in Equation~\ref{eqa:transr}, the reconstruction loss of the labeled users $\mathcal{L}_{l} = \mathrm{BCELoss}_{y_{i} \in \{0, 1\}}(y_{i}, l_{i})$ and the unlabeled users $\mathcal{L}_{u} = \mathrm{MSELoss}_{y_{i} = -1}(l_{i})$. The $\mathrm{BCELoss}$ is the binary cross-entropy (BCE) loss function and is defined as $\mathrm{BCELoss}(y, l) = -[ylogl + (1 - y)log(1-l)]$. The $\mathrm{MSELoss}$ is the mean squared error (MSE) loss function. 
-The total loss function is defined as:
+We train an Autoencoder on operation vectors collected from clean model loading and inference runs. Given an operation vector $\mathbf{v}$, the Autoencoder computes a reconstruction error
 \begin{equation}
-    \mathcal{L} = \mathcal{L}_{r} + \mathcal{L}_{l} + \mathcal{L}_{u}
+E = \left\lVert \mathbf{v} - \textit{Dec}(\textit{Enc}(\mathbf{v})) \right\rVert_2^2,
 \end{equation}
+where \textit{Enc} and \textit{Dec} denote the encoder and decoder networks, respectively. Operations with reconstruction error $E$ below a threshold $\theta$ are treated as consistent with normal model behavior and are discarded. If $E > \theta$, we mark the corresponding operation as abnormal, retain its full underlying system-call segment $S'$ and metadata $\langle \textit{PID}, \textit{TID}, t_{\textit{start}}, t_{\textit{end}} \rangle$, and promote it to the subsequent spatio-temporal matching stage.
 
-The model is trained offline using transaction data from the most recent $T$ days (default $T=7$). Fraudsters are detected based on reconstruction losses, with the top $T_s=1.2\%$ reconstruction losses designated as fraudster seeds. The setting of $T_s$ is based on the observation that fraudsters are around 1.5\% in the production environment and we evaluate the performance of the model with different $T_s$ in Section~\ref{sec:rq4}.
+By performing this unsupervised prefiltering at the operation level, the system keeps the expensive cross-layer association and LLM reasoning off the critical path for the vast majority of benign activity, while still surfacing rare, suspicious low-level behaviors that deviate from the learned distribution of normal AI model execution.
 
-\noindent \textbf{Anomaly Propagation.} Although reconstruction-based anomaly detection is more generalizable than supervised methods, balancing precision and recall remains a challenge~\cite{10144292}. 
-Moreover, fraudsters within the same group may exhibit varying reconstruction losses due to differences in their neighbors, resulting in potential false negatives. 
-To address this limitation, we propose using fraudsters with high reconstruction errors as anomaly seeds and propagating anomalies on a multi-relation fused graph to identify additional fraudsters. 
+\subsubsection{Spatio-temporal Semantic Matching}
 
-To enhance detection, we extend the fraudster seed set using an anomaly propagation strategy. Fraudsters typically exhibit strong cohesion across multiple dimensions. We quantify this cohesion using the attention score $\alpha_{ij}$ and the weight of each relation $w^{ij}_{r}$. 
-The propagation score between user $i$ and user $j$ is defined as:
-\begin{equation}
-    p_{ij} = \sum_{r = 1}^{|\mathcal R|} \alpha_{ij}*w^{ij}_{r}
-\end{equation}
-Using the propagation score, we identify fraudsters who exhibit high cohesion across multiple dimensions with the seed fraudsters. \fix{This propagation strategy computes scores in single pass using precomputed attention scores, enabling quick updates on \Company's production environment.}
-For each fraudster seed $i$, we compute $p_{ij}$; if $p_{ij}$ exceeds a threshold $T_p$, the user $j$ is classified as a fraudster within the same group. We also evaluate the performance of the model with different $T_p$ in Section~\ref{sec:rq4}.
+After the autoencoder identifies abnormal operations, we must determine whether each anomaly can be explained by benign Python-level behavior. This requires retrieving the semantic context from the instrumentation log stream that corresponds to each abnormal system-call operation.
 
+System calls and Python semantics are inherently asynchronous due to operating system scheduling and concurrent I/O. As a result, naive one-to-one timestamp matching between system-call logs and semantic logs is unreliable in high-concurrency workloads. We therefore adopt a fuzzy spatio-temporal association strategy.
+
+For each abnormal operation, the autoencoder screening stage provides the underlying system-call segment $S'$ and its metadata $\langle \textit{PID}, t_{\textit{start}}, t_{\textit{end}} \rangle$. Given this metadata and the semantic log stream $L = \{(\ell_i, t_i)\}$, we perform filtering following the spatial-temporal matching rules below.
+
+\noindent \textbf{Temporal windowing.}
+We apply a slack temporal window around the abnormal operation. For each candidate abnormal operation, we define its active time span $[t_{\textit{start}}, t_{\textit{end}}]$ based on the first and last system call in $S'$, and search semantic events whose timestamps $t_i$ fall into an expanded window $[t_{\textit{start}} - \Delta t, t_{\textit{end}} + \Delta t]$. The slack parameter $\Delta t$ tolerates minor scheduling jitter while still localizing semantic context to the period when the resource was actually in use.
+
+\noindent \textbf{Spatial hints.}
+Temporal proximity alone is insufficient under heavy concurrency. We therefore further filter candidates using resource-related hints derived from both layers, such as whether the operation is file- or network-related, file paths or prefixes, remote destinations, and other descriptor metadata when available. Combining temporal and spatial constraints yields a fuzzy but robust alignment that significantly reduces spurious associations when many model components execute in parallel.
+
+\noindent \textbf{Cross-layer behavior profile.}
+After spatio-temporal filtering, we bundle the abnormal operation vector, its raw system-call summary, and the aligned semantic events into a structured cross-layer behavior profile. This profile serves as the input to the LLM-based intent reasoning stage: it contains (i) what the OS observed at the system-call level, (ii) which high-level Python APIs and call sites were active around that time and on the same resource, and (iii) basic execution-phase information. Together, these elements provide sufficient context to decide whether the abnormal low-level behavior is consistent with benign model execution or indicative of malicious intent.
+
+\subsection{Fine-grained Verification}
+
+Operations that survive coarse-grained filtering are escalated to the fine-grained verification stage, which jointly reasons about the low-level system-call evidence and high-level semantic context to produce a final intent judgment.
+
+Determining whether abnormal low-level operations reflect benign model behavior or malicious intent is inherently challenging: the same system-call pattern can arise from legitimate model loading or from an attacker's attempt to exfiltrate data, and without semantic context the two are indistinguishable at the kernel level. To resolve this ambiguity, we feed each abnormal operation together with its aligned semantic contexts into an LLM, which judges whether the behavior is consistent with benign model execution.
+
+\noindent \textbf{Prompt construction.}
+We translate the aligned evidence into a structured natural-language prompt that includes: (i) a concise summary of the abnormal operation including operation type, key statistics, and risk-relevant parameters, (ii) the aligned semantic call contexts including library/API, call stack summary, and argument summaries, and (iii) the execution phase categorized into the model loading stage and inference stage.
+
+Our maliciousness judgment follows a principled cross-layer reasoning rule: a behavior is classified as benign only when its low-level system-call activity can be plausibly explained by the aligned Python-level semantic context. Concretely, if the LLM identifies that the observed file reads, network connections, or process creations are consistent with the framework APIs and execution phase reported in the semantic log, the operation is deemed benign and discarded. Conversely, when inconsistencies exist between the Python-layer semantic logs and the corresponding system-call activities, such as a network connection to an external host with no matching high-level API invocation, or when no matching Python semantic context can be retrieved at all, the behavior is marked as malicious and escalated.
+
+\noindent \textbf{Decision and explanation.}
+The LLM outputs $\textit{IntentScore}$, a $\textit{ThreatCategory}$ label, and a rationale. Importantly, we persist the subset of semantic events and system-call summaries used in the reasoning as the \emph{evidence chain} $\textit{Context}$ for auditing.
+If high-risk system-call patterns appear without any plausible semantic explanation, the system raises a high-severity alert and can block execution in the controlled environment.
+
+
+\subsection{Model Vetting Pipeline}
+%% [Deployment: MAD operates in pre-deployment fuzzing pipeline, not production serving]
+
+MAD is designed to operate in a pre-deployment model vetting pipeline rather than in production inference serving. Before a model is released or integrated into any production system, it should undergo a comprehensive security vetting phase in a controlled sandbox environment with MAD monitoring its behavior to detect embedded malicious logic.
+
+To maximize detection coverage, we recommend exhaustive fuzzing-based testing of all real-world business workflows that the model will encounter post-deployment. Concretely, the model should be exercised through every anticipated usage scenario: loading with all expected input shapes and data types, invoking inference across the full range of supported batch sizes, exercising all serialization, checkpointing, and fine-tuning paths, and simulating edge-case inputs that stress runtime boundaries. This fuzzing strategy ensures that dormant malicious payloads—which may be conditionally triggered only under specific runtime conditions, input patterns, or execution phases—are activated and exposed during testing, providing comprehensive coverage beyond simple model loading.
