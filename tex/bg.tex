@@ -55,7 +55,7 @@ Framework-native attacks weaponize legitimate framework APIs to execute maliciou
 
 \subsection{Existing Defenses and Their Limitations}
 
-While extensive research addresses inference-time threats such as adversarial examples\cite{10656658, Xie_2025_CVPR} and data poisoning\cite{10646610, chen2025generalizabletargeteddatapoisoning}, efforts to secure the AI supply chain against malware injection remain limited\cite{}. Current defenses primarily rely on static analysis and signature-based scanning.
+While extensive research addresses inference-time threats such as adversarial examples\cite{10656658, Xie_2025_CVPR} and data poisoning\cite{10646610, chen2025generalizabletargeteddatapoisoning}, efforts to secure the AI supply chain against malware injection remain limited\cite{nabeel2026deepdiveabusedl,jiang2026soktaxonomyattackvectors}. Current defenses primarily rely on static analysis and signature-based scanning.
 
 Fickling~\cite{fickling} decompiles pickle bytecodes into readable Python code to identify embedded malicious payloads. Hugging Face employs Picklescanning~\cite{picklescanning}, which combines ClamAV~\cite{clamav} with import table inspection within pickle files. A static detection methodology for suspicious API calls in computational graphs was also proposed alongside TensorAbuse.
 
