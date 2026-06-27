@@ -5,7 +5,7 @@ In this section, we present our approach for detecting malicious behaviors embed
 
 \begin{figure*}[t!]
     \centering
-    \includegraphics[width=\linewidth]{figs/overview3.pdf}
+    \includegraphics[width=\linewidth]{figs/overview4.pdf}
     \caption{Overview of the hybrid defense system.}
     \label{fig:overview}
 \end{figure*}
@@ -150,7 +150,7 @@ Operations that survive coarse-grained filtering are escalated to the fine-grain
 Determining whether abnormal low-level operations reflect benign model behavior or malicious intent is inherently challenging: the same system-call pattern can arise from legitimate model loading or from an attacker's attempt to exfiltrate data, and without semantic context the two are indistinguishable at the kernel level. To resolve this ambiguity, we feed each abnormal operation together with its aligned semantic contexts into an LLM, which judges whether the behavior is consistent with benign model execution.
 
 \noindent \textbf{Prompt construction.}
-We translate the aligned evidence into a structured natural-language prompt that includes: (i) a concise summary of the abnormal operation including operation type, key statistics, and risk-relevant parameters, (ii) the aligned semantic call contexts including library/API, call stack summary, and argument summaries, and (iii) the execution phase categorized into the model loading stage and inference stage.
+We translate the aligned evidence into a structured natural-language prompt that includes: (i) a concise summary of the abnormal operation including operation type, key statistics, and risk-relevant parameters, (ii) the aligned semantic call contexts including library/API, call stack summary, and argument summaries, and (iii) the execution phase categorized into the model loading stage and inference stage. The complete prompt template is given in Listing~\ref{lst:prompt} of Appendix~\ref{appendix:prompt}.
 
 Our maliciousness judgment follows a principled cross-layer reasoning rule: a behavior is classified as benign only when its low-level system-call activity can be plausibly explained by the aligned Python-level semantic context. Concretely, if the LLM identifies that the observed file reads, network connections, or process creations are consistent with the framework APIs and execution phase reported in the semantic log, the operation is deemed benign and discarded. Conversely, when inconsistencies exist between the Python-layer semantic logs and the corresponding system-call activities, such as a network connection to an external host with no matching high-level API invocation, or when no matching Python semantic context can be retrieved at all, the behavior is marked as malicious and escalated.
 
@@ -159,9 +159,3 @@ The LLM outputs $\textit{IntentScore}$, a $\textit{ThreatCategory}$ label, and a
 If high-risk system-call patterns appear without any plausible semantic explanation, the system raises a high-severity alert and can block execution in the controlled environment.
 
 
-\subsection{Model Vetting Pipeline}
-%% [Deployment: \toolname{} operates in pre-deployment fuzzing pipeline, not production serving]
-
-\toolname{} is designed to operate in a pre-deployment model vetting pipeline rather than in production inference serving. Before a model is released or integrated into any production system, it should undergo a comprehensive security vetting phase in a controlled sandbox environment with \toolname{} monitoring its behavior to detect embedded malicious logic.
-
-To maximize detection coverage, we recommend exhaustive fuzzing-based testing of all real-world business workflows that the model will encounter post-deployment\cite{wu2026chainfuzzergreyboxfuzzingworkflowlevel, BAMOHABBATCHAFJIRI2024103903}. Concretely, the model should be exercised through every anticipated usage scenario: loading with all expected input shapes and data types, invoking inference across the full range of supported batch sizes, exercising all serialization, checkpointing, and fine-tuning paths, and simulating edge-case inputs that stress runtime boundaries. This fuzzing strategy ensures that dormant malicious payloads—which may be conditionally triggered only under specific runtime conditions, input patterns, or execution phases—are activated and exposed during testing, providing comprehensive coverage beyond simple model loading.

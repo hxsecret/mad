@@ -1,0 +1,45 @@
+Your task is to perform cross-layer threat reasoning based on the given inputs. Follow the rules and requirements below to generate the specified output.
+
+### Task Objective
+Conduct cross-layer threat reasoning to determine the nature of an anomaly syscall operation by analyzing the execution phase, the syscall itself, and the application log.
+
+### Classification Rules
+- First, determine whether the syscall operation is suspicious
+- For suspicious syscall operations, further explain them by associating them with corresponding Python APIs:
+-- Benign: The syscall operation fully matches the expected behavior of Python APIs in the given context.
+-- Malicious: The syscall operation shows context inconsistency or lacks valid Python context.
+
+### Inputs
+<execution_phase>
+{{EXECUTION_PHASE}}
+</execution_phase>
+
+<anomaly_syscall_operation>
+{{ANOMALY_SYSCALL_OPERATION}}
+</anomaly_syscall_operation>
+
+<application_log>
+{{APPLICATION_LOG}}
+</application_log>
+
+### Output Requirements
+You need to generate three key components:
+1. IntentScore: A numerical score between 0 (definitely benign) and 10 (definitely malicious) indicating the likelihood of the syscall being malicious.
+2. Category: A label of either "Benign" or "Malicious" based on the rules.
+3. Evidence Chain: A step-by-step explanation linking the inputs to the Category and IntentScore, including references to specific parts of the application log and how the syscall aligns (or misaligns) with Python API expectations. For malicious syscalls, also explain by associating them with corresponding Python APIs.
+
+### Output Format
+Write your results within the following XML tags:
+<IntentScore>
+[Insert numerical score here]
+</IntentScore>
+
+<Category>
+[Insert "Benign" or "Malicious" here]
+</Category>
+
+<EvidenceChain>
+[Insert step-by-step evidence and reasoning here]
+</EvidenceChain>
+
+Ensure your Evidence Chain is detailed, referencing specific content from the application log and clearly explaining how the syscall operation relates to Python API behavior in the given execution phase. For malicious syscalls, also include explanations associated with corresponding Python APIs. The IntentScore should reflect the strength of your evidence for or against malicious intent.
