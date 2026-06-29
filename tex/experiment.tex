@@ -1,6 +1,6 @@
 \section{Evaluation}\label{sec:evaluation}
 
-We evaluate the effectiveness of \toolname{} in detecting malicious behavior embedded in model artifacts. Our study focuses on three aspects: (i) detection performance compared to state-of-the-art defenses, including robustness to camouflage attacks such as TensorAbuse; (ii) the impact of cross-layer modeling and its components on accuracy and explainability; and (iii) runtime overhead and deployability in realistic analysis environments. We organize the evaluation around the following research questions:
+We evaluate the effectiveness of \toolname{} in detecting malicious behavior embedded in model artifacts. We organize the evaluation around the following research questions:
 
 \begin{itemize}[noitemsep, topsep=1pt, partopsep=1pt, listparindent=\parindent, leftmargin=*]
     \item \textbf{RQ1:} What is the performance of \toolname{} in detecting malicious models, and does it show significant advantages over the baselines?
@@ -15,20 +15,14 @@ We evaluate the effectiveness of \toolname{} in detecting malicious behavior emb
 We evaluate \toolname{} on two datasets spanning known deserialization exploits and advanced framework-native attacks:
 \begin{itemize}
     \item \emph{MalHug Dataset.} 89 models identified as anomalous by MalHug from public repositories. Manual source code auditing and sandbox verification label 78 as malicious—mainly abusing Pickle deserialization to implant reverse shells—and 11 as benign proof-of-concept samples that verify exploitability without destructive operations. While these represent real-world threats, their methodologies rely on well-known deserialization flaws and are straightforward to detect with existing static scanners.
-    \item \emph{Advanced TensorAbuse Synthetic Dataset.} To evaluate our system against highly stealthy, framework-native attacks, we constructed a second dataset using the TensorAbuse framework~\cite{zhu2025}. This corpus comprises two complementary subsets. The \textbf{malicious subset} contains 80 models: for each of 10 diverse foundation models, we embed 8 attack variants spanning four categories—File Exfiltration, IP Exposure, Malicious Code Insertion, and Remote Shell Acquisition—using TensorAbuse primitives. The \textbf{Benign Subset} contains 40 models that invoke the same high-risk native TensorFlow APIs for legitimate purposes such as loading dataset configurations or outputting debug tags, constructed to precisely quantify the false-positive rate. The complete catalog of primitive APIs and the attack composition procedure are detailed in Appendix~\ref{appendix:dataset}.
+    \item \emph{Advanced TensorAbuse Synthetic Dataset.} To evaluate our system against highly stealthy, framework-native attacks, we constructed a second dataset using the TensorAbuse framework~\cite{zhu2025}. This corpus comprises two complementary subsets. The \textbf{malicious subset} contains 80 models: for each of 10 diverse foundation models, we embed 8 attack variants spanning four categories using TensorAbuse primitives. The complete catalog of primitive APIs and the attack composition procedure are detailed in Appendix~\ref{appendix:dataset}. The \textbf{Benign Subset} contains 40 models that invoke the same high-risk native TensorFlow APIs for legitimate purposes such as outputting debug tags, constructed to precisely quantify the false-positive rate. 
 \end{itemize}
 
-For all datasets, the model artifact is the unit under test. Labels are assigned by manual payload inspection and sandboxed verification of malicious operations.
+For all datasets, the model artifact is the unit under test. Labels are assigned by manual payload inspection.
 
 \noindent \textbf{Baselines.}
 We compare against four baseline detection methods: three widely adopted security scanners integrated into the Hugging Face platform—JFrog~\cite{jfrog2024huggingface}, Protect AI~\cite{modelscan}, and ClamAV~\cite{clamav}—and the specialized detection tool from TensorAbuse~\cite{zhu2025}.
-
-For JFrog, Protect AI, and ClamAV, we uploaded our model artifacts to the Hugging Face platform, triggering its live security scanning pipelines to capture authentic detection efficacy in a real-world supply chain setting. For TensorAbuse, which statically identifies suspicious API calls in computational graphs, we use the authors' open-source implementation. Since these baselines rely on static analysis and signature matching without dynamic execution, we evaluate them directly against raw model artifacts under authentic, platform-native conditions.
-
-\noindent \textbf{Implementation Details.}
-\toolname{} is implemented in Python. The kernel-level module uses \texttt{strace} to collect system calls from the target process and its children, aggregates raw traces into per-resource operation vectors $\mathbf{v}_{\textit{dir}}$ and $\mathbf{v}_{\textit{sys}}$ (Section~\ref{sec:approach}), and trains an Autoencoder on vectors from trusted benign models with the reconstruction error threshold $\theta$ chosen on a validation set.
-
-For Python instrumentation, we apply non-invasive monkey patching to framework and standard-library APIs for security-relevant operations (file I/O, network, subprocess). Each invocation records a structured event $\ell_i = \langle \textit{PID}, \textit{TID}, \textit{FuncName}, \textit{ArgsSummary} \rangle$ with bounded argument summaries. Cross-layer association aligns abnormal operations with nearby semantic events via the spatio-temporal strategy in Section~\ref{sec:approach}, producing behavior profiles fed to an LLM for intent reasoning. We use a production-grade LLM with temperature zero for deterministic decisions.
+For JFrog, Protect AI, and ClamAV, we uploaded our model artifacts to the Hugging Face platform, triggering its live security scanning pipelines to capture authentic detection efficacy in a real-world supply chain setting. For TensorAbuse, we use the authors' open-source implementation. 
 
 All experiments run on a workstation with dual Intel Xeon Silver 4210R CPUs, 128 GB RAM, and two NVIDIA GeForce RTX 3090 GPUs.
 
@@ -228,8 +222,7 @@ This phenomenon aligns with the operating characteristics of deep learning frame
 
 \textbf{Detection Latency Analysis.} As shown in Table~\ref{tab:overhead_result}, \toolname{} achieves an average detection latency of 9.79 seconds. This latency encompasses the full analytical pipeline: capturing low-level system calls, completing the Autoencoder forward pass, extracting the corresponding Python contextual logs, and generating the final \ac{llm} intent classification. The \ac{llm} intent classification is only invoked on a small fraction of operations marked as abnormal by the Autoencoder, so its cost does not scale with total runtime but solely with the number of suspicious events.
 
-While dynamic reasoning inherently introduces some delay compared to simple signature matching, this two-stage design keeps the overall overhead well within the acceptable budget for offline model vetting pipelines and pre-deployment security checks. \toolname{} can be seamlessly integrated as the final security gate in the model release pipeline with acceptable latency during pre-deployment security testing.
-
+While dynamic reasoning inherently introduces some delay compared to simple signature matching, this two-stage design keeps the overall overhead well within the acceptable budget for offline model vetting pipelines and pre-deployment security checks. 
 
 \label{sec:rq3}
 
@@ -238,7 +231,7 @@ In this section, we evaluate the contribution of each core component of \toolnam
 
 \begin{itemize}
     \item \emph{\toolname{}--S}: which removes the unsupervised Autoencoder screening stage, directly feeding all raw system call windows and application-level instrumentation logs to the \ac{llm} for anomaly detection;
-    \item \emph{\toolname{}--L}: which removes the application-level dynamic instrumentation, relying solely on the anomalous system call operations filtered  by the Autoencoder for the \ac{llm} to make its final judgment without high-level Python semantic context;
+    \item \emph{\toolname{}--L}: which removes the application-level dynamic instrumentation, relying solely on the anomalous system call operations to make its final judgment;
 \end{itemize}
 
 \begin{table}[t!]
@@ -264,9 +257,9 @@ In this section, we evaluate the contribution of each core component of \toolnam
 We evaluate these two variants and compare them with the full \toolname{} model. The evaluation metrics cover detection accuracy and system efficiency. Table~\ref{tab:ablation_metrics} details the comprehensive metrics.
 Overall, both variants exhibit significantly degraded performance or unacceptable system overhead compared to the full model, proving that both stages are indispensable.
 
-Specifically, \toolname{}-S suffers from a catastrophic decrease in detection efficiency and a massive surge in \ac{llm} token consumption. Because it bypasses the Autoencoder screening, the \ac{llm} is overwhelmed by the massive volume of benign, repetitive system events generated during normal model loading and inference. This increases the average detection latency to an impractical level ($20.5$ seconds) and incurs extreme API costs ($809868$ tokens). It also slightly reduces precision, as the \ac{llm} is more prone to hallucination when processing excessive background noise. This demonstrates that the statistical screening stage is crucial for filtering out normal activity and maintaining practical deployability.
+Specifically, \toolname{}-S suffers from a catastrophic decrease in detection efficiency and a massive surge in \ac{llm} token consumption. Because it bypasses the Autoencoder screening, the \ac{llm} is overwhelmed by the massive volume of benign, repetitive system events. This increases the average detection latency and incurs extreme API costs. It also slightly reduces precision, as the \ac{llm} is more prone to hallucination when processing excessive background noise. This demonstrates that the statistical screening stage is crucial for filtering out normal activity and maintaining practical deployability.
 
-On the other hand, \toolname{}-L performs the worst in detection accuracy, particularly suffering a severe drop in precision ($14.75\%$ lower than the full model). By removing the application-level instrumentation logs, the \ac{llm} is forced to judge intent based entirely on low-level system calls. Without high-level semantic context such as function arguments to explain why a system call was executed, benign operations are frequently misclassified as malicious network exfiltration. This confirms that a severe semantic gap exists at the OS level, and dynamic cross-layer context alignment is the most important component for eliminating false positives and accurately discerning the true intent of AI models.
+On the other hand, \toolname{}-L performs the worst in detection accuracy, particularly suffering a severe drop in precision. By removing the application-level instrumentation logs, the \ac{llm} is forced to judge intent based entirely on low-level system calls. Without high-level semantic context such as function arguments to explain why a system call was executed, benign operations are frequently misclassified as malicious. This confirms that dynamic cross-layer context alignment is an important component for eliminating false positives and accurately discerning the true intent of AI models.
 
 
 

@@ -3,8 +3,7 @@
 
 \subsection{AI Model Supply Chain Attack}
 
-The growth of open-source model hubs has transformed AI model development, enabling the community to download, fine-tune, and integrate pre-trained models into downstream applications~\cite{GambacortaShreeti}. As of 2026, Hugging Face hosts over 2.8 million models spanning 1,000+ languages and dozens of tasks~\cite{huggingface_stats, 10172757, 10589852}. 
-
+The growth of open-source model hubs has transformed AI model development, enabling the community to download, fine-tune, and integrate pre-trained models into downstream applications~\cite{GambacortaShreeti, 10172757, 10589852}. 
 This sharing paradigm introduces severe security vulnerabilities~\cite{Digregorio}. Recent reports have uncovered structural vulnerabilities on platforms such as Hugging Face~\cite{ding2025rustylinkaisupply, stalnaker2025empiricalanalysismachinelearning}, and real-world attacks have surged~\cite{attackblog1}. As illustrated in Figure~\ref{fig:attack}, the typical attack workflow involves uploading compromised models to public hubs that execute hidden payloads when downloaded. These attacks have already caused large-scale theft of user credentials and illicit exploitation of LLM API tokens, resulting in significant financial and operational damage~\cite{litellm1}.
 
 
