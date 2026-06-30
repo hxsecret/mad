@@ -1,7 +1,7 @@
 \section{Threat Model}
 \label{sec:threatmodel}
 
-In this paper, we focus on malicious code poisoning attacks within the AI model supply chain, in which malicious actors exploit the collaborative nature of pre-trained model hubs to distribute compromised artifacts and compromise victim systems.
+In this paper, we focus on malicious code poisoning attacks within the AI model supply chain, in which attackers exploit the collaborative sharing characteristics of pre-trained model hubs to distribute tampered models embedded with malicious logic, thereby compromising victim host systems.
 
 \noindent \textbf{Attackers.} The attackers are malicious AI model providers or actors who have compromised legitimate developer accounts\cite{10754708}. They can create and upload malicious datasets and binary model files to public model hubs without providing the original training source code. To embed payloads, attackers exploit insecure serialization formats\cite{liu2025arthideseekmaking} or abuse hidden capabilities of framework APIs\cite{zhu2025} to bypass static security scanners. They may also exploit leaked authentication tokens or hijack trusted identities to deceive the community\cite{3773117}. Their primary goal is to execute unauthorized actions, such as establishing reverse shells, exfiltrating sensitive data, or deploying ransomware, without attracting attention.
 

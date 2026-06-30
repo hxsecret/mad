@@ -21,27 +21,27 @@ We base our detection on system-call traces because they operate below the user-
 \begin{table}[t!]
 	\centering
 	\caption{Security-relevant system-call categories used by our filter.}
-	\begin{tabular}{l p{0.28\columnwidth} p{0.45\columnwidth}}
+	\begin{tabular}{p{0.10\columnwidth} p{0.28\columnwidth} p{0.47\columnwidth}}
 		\hline
-		Filter param & Category & Purpose \\
+		Param & Category & Purpose \\
 		\hline
-		file   & File operations (\texttt{read}/\texttt{write}) & Detect sensitive data leakage or configuration file tampering \\
-		network & Network operations (\texttt{socket}) & Detect data exfiltration or remote command execution \\
-		cred   & Credential operations (\texttt{setuid}) & Detect privilege-escalation behavior \\
-		desc   & Descriptor operations (\texttt{dup}) & Assist file-related anomaly detection \\
-		signal & Signal handling (\texttt{kill}) & Capture malicious process termination attempts \\
+		file   & File operations  & Detect sensitive data leakage or configuration file tampering \\
+		network & Network operations  & Detect data exfiltration or remote command execution \\
+		cred   & Credential operations  & Detect privilege-escalation behavior \\
+		desc   & Descriptor operations  & Detect file-related malicious behavior detection \\
+		signal & Signal handling  & Capture malicious process termination attempts \\
 		clock  & Time-related operations & Assist temporal anomaly analysis (e.g., abnormal delays) \\
 		\hline
 	\end{tabular}
 	\label{tab:syscalltypes}
 \end{table}
 
-We employ a selective tracing strategy that focuses exclusively on security-relevant system-call families, discarding high-frequency but semantically uninformative calls to keep the trace volume manageable. During controlled model execution, we use \texttt{strace} to continuously trace system calls of the target process. To reduce noise and overhead, we immediately discard calls such as scheduler hints and memory-mapping operations that carry no security signal\cite{shakya2022analysisdetectionclassificationandroid}. The selection concentrates on system-call categories that can indicate malicious intent. Table~\ref{tab:syscalltypes} summarizes the security-relevant syscall families we monitor and their roles in our detection pipeline. For example, file operations can reveal attempts to access sensitive data or modify configurations, while network operations may signal data exfiltration or remote command execution.
+We employ a selective tracing strategy that focuses exclusively on security-relevant system-call families, discarding high-frequency but semantically uninformative calls to keep the trace volume manageable. During controlled model execution, we use \texttt{strace} to continuously trace system calls of the target process. To reduce noise and overhead, we immediately discard calls such as scheduler hints and memory-mapping operations that carry no security signal\cite{shakya2022analysisdetectionclassificationandroid}. Table~\ref{tab:syscalltypes} summarizes the security-relevant syscall families we monitor and their roles in our detection pipeline. For example, file operations can reveal attempts to access sensitive data or modify configurations, while network operations may signal data exfiltration or remote command execution.
 
 \subsubsection{Instrumentation log collection.}
 To bridge the semantic gap between model-level intent and kernel-level behavior, we collect high-dimensional Python semantic context via non-invasive instrumentation. The key challenge is that heterogeneous ML frameworks expose frequently changing APIs, making manual per-framework instrumentation labor-intensive and coverage-incomplete. We address this through an LLM-assisted approach with two distinct phases.
 
-\noindent \textbf{Pre-execution: API Discovery and Script Generation.}
+\noindent \textbf{Pre-execution: API discovery and script generation.}
 Before model execution, we leverage an LLM to synthesize dynamic instrumentation scripts. A rigorously structured prompt constrains the LLM to generate code that inspects the target module's namespace at startup, systematically identifies all public callable attributes, and constructs wrapper closures around each. The prompt specifies the security objective, mandates capturing execution context which contains timestamps, operation types, argument values and return types, and requires all intercepted events to be serialized into standardized JSON. This automated discovery eliminates statically hardcoded API lists and adapts to framework version changes by simply regenerating wrappers for the new API surface, without modifying the core detection pipeline.
 
 Algorithm~\ref{alg:instrumentation} formalizes this discovery and wrapping logic. The \texttt{ApplyDynamicPatches} procedure isolates public callables while skipping private attributes and non-callable objects, then generates wrapper closures for each target API.
@@ -81,7 +81,7 @@ Algorithm~\ref{alg:instrumentation} formalizes this discovery and wrapping logic
 }
 \end{algorithm}
 
-\noindent \textbf{Runtime: Wrapper Injection and Context Logging.}
+\noindent \textbf{Runtime: Wrapper injection and context logging.}
 At process startup, the generated script employs monkey patching (\texttt{setattr}) to replace original functions with wrapper closures. Thereafter, any invocation of a wrapped API triggers the injected closure, which captures the execution context and serializes it as a structured semantic event:
 \begin{equation}
 \ell_i = \langle \textit{FuncName},\; \textit{ArgsSummary} \rangle.
@@ -96,7 +96,7 @@ After collecting raw evidence streams, the coarse-grained filtering stage transf
 
 \subsubsection{System-call Clustering and Embedding}
 
-The collected system-call traces are extremely fine-grained and voluminous. A single model loading process may produce thousands of system calls, and meaningful malicious behavior invariably manifests as a \emph{sequence} of related calls rather than as isolated events. To address this, we aggregate correlated system calls into compact, high-level operation vectors that reduce trace noise, compress data volume, and provide standardized analysis units with complete semantics for downstream anomaly detection.
+The collected system-call traces are extremely fine-grained and voluminous. A single model loading process may produce thousands of system calls, and meaningful malicious behavior invariably manifests as a \emph{sequence} of related calls rather than as isolated events. To address this, we aggregate correlated system calls into compact high-level operation vectors to reduce trace noise and compress data volume, while providing standardized analysis units with complete semantics for anomaly detection.
 
 To accurately model the execution semantics of a program, it is crucial to recognize that system calls inherently possess varying degrees of contextual dependency. Applying a uniform extraction strategy to all system calls would be ineffective: some operations are semantically self-contained and immediately indicative of high-risk behavior, whereas others are granular, stateful operations that remain ambiguous unless analyzed as a continuous sequence. Motivated by this fundamental difference, we propose a hybrid embedding scheme that categorizes the traced system calls into two distinct streams for targeted handling: (1) \emph{Directly malicious calls} and (2) \emph{Stateful calls}. By processing these two streams individually, we ultimately synthesize them into a unified feature space for downstream analysis.
 
@@ -104,7 +104,7 @@ To accurately model the execution semantics of a program, it is crucial to recog
 The first category includes standalone, high-risk operations that do not require lifecycle context. We directly encode each of these calls into a fixed-dimension operation vector $\mathbf{v}_{\textit{dir}} \in \mathbb{R}^{d}$. Specifically, we utilize a pre-trained BERT-based model to extract the rich semantic meaning from the call's underlying logic and literal arguments. This high-dimensional representation is subsequently projected down to the target dimension $d$, ensuring that semantically critical, self-contained threats are instantly captured without the need for sequence aggregation.
 
 \noindent \textbf{Stateful aggregation.}
-Let $S = \{(s_k, \tau_k)\}_{k=1}^{N}$ denote the traced system-call stream, where $s_k$ is the $k$-th syscall and $\tau_k$ its timestamp. For stateful operations, we maintain per-resource state keyed by $r = \langle \textit{PID}, \textit{FD} \rangle$, where $\textit{FD}$ denotes a file or socket descriptor. For each key $r$, we collect the indices of calls that operate on this resource within one lifecycle segment,
+Let $S = \{(s_k, \tau_k)\}_{k=1}^{N}$ denote the traced system-call stream, where $s_k$ is the $k$-th syscall and $\tau_k$ its timestamp. For stateful operations, we maintain per-resource state keyed by $r = \langle \textit{PID}, \textit{FD} \rangle$, where $\textit{PID}$ denotes process ID, $\textit{FD}$ denotes a file or socket descriptor. For each key $r$, we collect the indices of calls that operate on this resource within one lifecycle segment,
 \begin{equation}
 I_r = \{\, k \mid (s_k, \tau_k) \in S,\ s_k \text{ uses resource } r,\ \tau_{\textit{start}}^r \le \tau_k \le \tau_{\textit{end}}^r \,\},
 \end{equation}
@@ -122,7 +122,7 @@ The final feature matrix combines $\mathbf{v}_{\textit{dir}}$ and $\mathbf{v}_{\
 
 We adopt unsupervised anomaly detection because benign model loading and inference produce a stable, learnable distribution of system-call operations, whereas malicious behaviors are inherently rare and diverse, making supervised classification impractical without labeled attack samples that cover the full threat space. Among unsupervised methods, we choose an Autoencoder for its conceptual simplicity and proven effectiveness in reconstruction-based anomaly detection: it learns to faithfully reconstruct benign operation vectors during training and naturally flags any vector it cannot faithfully reconstruct as anomalous.
 
-We train an Autoencoder on operation vectors collected from clean model loading and inference runs. Given an operation vector $\mathbf{v}$, the Autoencoder computes a reconstruction error
+We train an Autoencoder on operation vectors collected from benign model. Given an operation vector $\mathbf{v}$, the Autoencoder computes a reconstruction error
 \begin{equation}
 E = \left\lVert \mathbf{v} - \textit{Dec}(\textit{Enc}(\mathbf{v})) \right\rVert_2^2,
 \end{equation}
@@ -149,9 +149,9 @@ Operations that survive coarse-grained filtering are escalated to the fine-grain
 Determining whether abnormal low-level operations reflect benign model behavior or malicious intent is inherently challenging: the same system-call pattern can arise from legitimate model loading or from an attacker's attempt to exfiltrate data, and without semantic context the two are indistinguishable at the kernel level. To resolve this ambiguity, we feed each abnormal operation together with its aligned semantic contexts into an LLM, which judges whether the behavior is consistent with benign model execution.
 
 \noindent \textbf{Prompt construction.}
-We translate the aligned evidence into a structured natural-language prompt that includes: (i) a concise summary of the abnormal operation including operation type, key statistics, and risk-relevant parameters, (ii) the aligned semantic call contexts including library/API, call stack summary, and argument summaries, and (iii) the execution phase categorized into the model loading stage and inference stage. The complete prompt template is given in Listing~\ref{lst:prompt} of Appendix~\ref{appendix:prompt}.
+We translate the aligned evidence into a structured natural-language prompt that includes: (i) a concise summary of the abnormal operation including operation type, key statistics, and risk-relevant parameters, (ii) the aligned semantic call contexts including library/API, call stack summary, and argument summaries, and (iii) the execution phase categorized into the model loading stage and inference stage.
 
-Our maliciousness judgment follows a principled cross-layer reasoning rule: a behavior is classified as benign only when its low-level system-call activity can be plausibly explained by the aligned Python-level semantic context. Concretely, if the LLM identifies that the observed file reads, network connections, or process creations are consistent with the framework APIs and execution phase reported in the semantic log, the operation is deemed benign and discarded. Conversely, when inconsistencies exist between the Python-layer semantic logs and the corresponding system-call activities, such as a network connection to an external host with no matching high-level API invocation, or when no matching Python semantic context can be retrieved at all, the behavior is marked as malicious and escalated.
+Our maliciousness judgment follows a principled cross-layer reasoning rule: a behavior is classified as benign only when its low-level system-call activity can be plausibly explained by the aligned Python-level semantic context. Concretely, if the LLM identifies that the observed file reads, network connections, or process creations are consistent with the framework APIs and execution phase reported in the semantic log, the operation is deemed benign and discarded. Conversely, when inconsistencies exist between the Python-layer semantic logs and the corresponding system-call activities, or when no matching Python semantic context can be retrieved at all, the behavior is marked as malicious and escalated.
 
 \noindent \textbf{Decision and explanation.}
 The LLM outputs $\textit{IntentScore}$, a $\textit{ThreatCategory}$ label, and a rationale. Importantly, we persist the subset of semantic events and system-call summaries used in the reasoning as the \emph{evidence chain} $\textit{Context}$ for auditing.

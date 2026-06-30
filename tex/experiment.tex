@@ -14,14 +14,16 @@ We evaluate the effectiveness of \toolname{} in detecting malicious behavior emb
 \noindent \textbf{Datasets.}
 We evaluate \toolname{} on two datasets spanning known deserialization exploits and advanced framework-native attacks:
 \begin{itemize}
-    \item \emph{MalHug Dataset.} 89 models identified as anomalous by MalHug from public repositories\shaofei{need citation here}. Manual source code auditing and sandbox verification label 78 as malicious—mainly abusing Pickle deserialization to implant reverse shells—and 11 as benign proof-of-concept samples that verify exploitability without destructive operations. While these represent real-world threats, their methodologies rely on well-known deserialization flaws and are straightforward to detect with existing static scanners.
-    \item \emph{Advanced TensorAbuse Synthetic Dataset.} To evaluate our system against highly stealthy, framework-native attacks, we constructed a second dataset using the TensorAbuse framework~\cite{zhu2025}. This corpus comprises two complementary subsets. The \textbf{malicious subset} contains 80 models: for each of 10 diverse foundation models, we embed 8 attack variants spanning four categories using TensorAbuse primitives. The complete catalog of primitive APIs and the attack composition procedure are detailed in Appendix~\ref{appendix:dataset}. The \textbf{benign subset} contains 40 models that invoke the same high-risk native TensorFlow APIs for legitimate purposes such as outputting debug tags, constructed to precisely quantify the false-positive rate. 
+    \item \emph{MalHug Dataset.} 89 models identified as anomalous by MalHug from public repositories\cite{malhug}. Manual source code auditing and sandbox verification label 78 as malicious—mainly abusing Pickle deserialization to implant reverse shells—and 11 as benign proof-of-concept samples that verify exploitability without destructive operations. While these represent real-world threats, their methodologies rely on well-known deserialization flaws and are straightforward to detect with existing static scanners.
+    \item \emph{Advanced TensorAbuse Synthetic Dataset.} To evaluate our system against highly stealthy, framework-native attacks, we constructed a second dataset using the TensorAbuse framework~\cite{zhu2025}. This corpus comprises two complementary subsets. The \textbf{malicious subset} contains 160 models: for each of 10 diverse foundation models, we embed 8 attack variants spanning four categories using TensorAbuse primitives.  The \textbf{Benign Subset} contains 100 models that invoke the same high-risk TensorFlow APIs for legitimate purposes such as outputting debug tags, constructed to precisely quantify the false-positive rate. 
 \end{itemize}
+
+It is worth emphasizing that the construction method of the advanced TensorAbuse synthetic dataset is as follows: based on the five capability categories of APIs defined in the TensorAbuse study, we construct four attack types for experimental evaluation: File Leak, IP Exposure, Code Execution, and Shell Access. We first identify the capability categories each attack needs to leverage, then randomly sample concrete APIs from each required category to assemble an attack chain. Details of attack construction are available in our repository.
 
 For all datasets, the model artifact is the unit under test. Labels are assigned by manual payload inspection.
 
 \noindent \textbf{Baselines.}
-We compare against four baseline detection methods: three widely adopted security scanners integrated into the Hugging Face platform—JFrog~\cite{jfrog2024huggingface}, Protect AI~\cite{modelscan}, and ClamAV~\cite{clamav}—and the specialized detection tool from TensorAbuse~\cite{zhu2025}.
+We compare against four baseline detection methods: three widely adopted security scanners integrated into the Hugging Face platform including JFrog~\cite{jfrog2024huggingface}, Protect AI~\cite{modelscan}, and ClamAV~\cite{clamav}, along with the specialized detection tool from TensorAbuse~\cite{zhu2025}.
 For JFrog, Protect AI, and ClamAV, we uploaded our model artifacts to the Hugging Face platform, triggering its live security scanning pipelines to capture authentic detection efficacy in a real-world supply chain setting. For TensorAbuse, we use the authors' open-source implementation. 
 
 All experiments run on a workstation with dual Intel Xeon Silver 4210R CPUs, 128 GB RAM, and two NVIDIA GeForce RTX 3090 GPUs.
@@ -38,7 +40,7 @@ All experiments run on a workstation with dual Intel Xeon Silver 4210R CPUs, 128
 %% [ORIGINAL INTRO -- commented for restructuring]
 %To answer this research question, we evaluate the detection performance of \toolname{} and the baseline methods across both the in-the-wild malicious model dataset from MalHug and our advanced TensorAbuse synthetic corpus. This comprehensive evaluation demonstrates \toolname{}'s effectiveness in identifying a wide spectrum of malicious activities, ranging from known deserialization exploits to sophisticated framework-native attacks.
 
-To answer this research question, we evaluate the detection performance of \toolname{} and the baseline methods across both datasets. 
+To answer this research question, we evaluate the detection performance of \toolname{} and the baseline methods across the two datasets. 
 
 \begin{table}[t!]
     \scriptsize
@@ -54,9 +56,9 @@ To answer this research question, we evaluate the detection performance of \tool
     \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 3]{c} \textbf{MalHug} & & & \SetCell[r = 1, c = 3]{c} \textbf{Advanced TensorAbuse Synthetic} & & \\
     & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\ \hline
     \SetCell[r = 1, c = 1]{c} \textbf{JFrog} & 0.8953 & 0.9872 & 0.9390 & 0.8889 & 0.3750 & 0.5275 \\
-    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & 0.8966 & \textbf{1.0000} & 0.9455 & 0.7273 & 0.5000 & 0.5928 \\
+    \SetCell[r = 1, c = 1]{c} \textbf{Protect AI} & 0.8966 & \textbf{1.0000} & 0.9455 & 0.6154 & \textbf{1.0000} & 0.7619 \\
     \SetCell[r = 1, c = 1]{c} \textbf{ClamAV} & 0.8904 & 0.8333 & 0.8609 & -- & 0.0000 & -- \\
-    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & -- & -- & -- & 0.6667 & \textbf{1.0000} & 0.8000 \\ \hline
+    \SetCell[r = 1, c = 1]{c} \textbf{TensorAbuse} & -- & -- & -- & 0.6154 & \textbf{1.0000} & 0.7619 \\ \hline
     \SetCell[r = 1, c = 1]{c} \textbf{\toolname{}} & \textbf{1.0000} & 0.9744 & \textbf{0.9870} & \textbf{1.0000} & \textbf{1.0000} & \textbf{1.0000} \\
     \end{tblr} }
     \label{tab:combined_result}
@@ -65,21 +67,21 @@ To answer this research question, we evaluate the detection performance of \tool
 %% [ORIGINAL OVERVIEW -- commented for restructuring]
 %Table~\ref{tab:combined_result} provides an overview of detection performance across both datasets. Two contrasting patterns emerge. On the MalHug dataset, traditional static scanners achieve moderate-to-high F1 scores by matching known deserialization signatures, with \toolname{} marginally outperforming them through precise intent verification. On the Synthetic Corpus, however, the performance gap widens dramatically: static tools degrade sharply, while TensorAbuse's perfect recall is offset by a 0.6667 precision from its inability to distinguish legitimate TensorFlow API usage. Only \toolname{} maintains high performance on both datasets, achieving an F1 of 0.9870 on MalHug and a perfect 1.0000 on the Synthetic Corpus. We next analyze each dataset in detail.
 
-Table~\ref{tab:combined_result} summarizes the detection performance across both datasets. On the MalHug Dataset, traditional static scanners achieve moderate to high F1 scores by matching known deserialization signatures. \toolname{} achieves a marginal improvement via accurate intent verification. However, on the Advanced TensorAbuse Synthetic Dataset, the performance gap expands dramatically. Static tools suffer a sharp drop in detection performance. While TensorAbuse achieves a perfect recall, its precision is only 0.6667, as it fails to distinguish legitimate and malicious calls to TensorFlow APIs. Only \toolname{} maintains consistently high performance on both datasets, achieving an F1 of 0.9870 on the MalHug Dataset and a perfect 1.0000 on the Advanced TensorAbuse Synthetic Dataset. We next analyze each dataset in detail.
+Table~\ref{tab:combined_result} summarizes the detection performance across both datasets. On the MalHug Dataset, traditional static scanners achieve moderate to high F1 scores by matching known deserialization signatures. \toolname{} achieves a marginal improvement via accurate intent verification. However, on the Advanced TensorAbuse Synthetic Dataset, the performance gap expands dramatically. Static tools suffer a sharp drop in detection performance. While TensorAbuse achieves a perfect recall, its precision is only 0.6154, as it fails to distinguish legitimate and malicious calls to TensorFlow APIs. Since Protect AI integrates a scanning mechanism similar to TensorAbuse, it delivers highly comparable detection performance. Only \toolname{} maintains consistently high performance on both datasets, achieving an F1 of 0.9870 on the MalHug Dataset and a perfect 1.0000 on the Advanced TensorAbuse Synthetic Dataset. We next analyze each dataset in detail.
 
 %% [ORIGINAL MALHUG ANALYSIS -- commented for restructuring]
 %\textbf{Performance on In-the-wild Dataset.} We first evaluate the methods on the dataset comprising 89 models in total, consisting of 78 genuinely malicious models and 11 benign proof-of-concept models. It is important to note that the attacks in this dataset primarily rely on inserting malicious payloads through insecure serialization vulnerabilities. Because this specific attack methodology is well-known and extensively studied, traditional static detection tools such as JFrog, Protect AI, and ClamAV achieve relatively high recall rates by relying on established vulnerability signatures. However, these baseline methods exhibit a critical limitation: they fail to distinguish between actual weaponized attacks and the 11 benign models. Detailed manual analysis revealed that these 11 models merely exploit the inherent mechanics of insecure serialization formats to execute normal operations, demonstrating the exploitability of the vulnerability as a proof-of-concept without performing genuinely harmful actions like data exfiltration or unauthorized network access. By simply classifying any model containing a vulnerable signature as malicious, these traditional methods generate significant false positives.
 %
 %In contrast, \toolname{} successfully detects 76 out of the 78 genuinely malicious models, while accurately categorizing all 11 proof-of-concept models as non-malicious. Because \toolname{} relies on a two-stage screening process that evaluates the actual intent of the dynamic behavior rather than merely matching static signatures, it demonstrates robust resilience against false positives. Finally, in stark contrast to all other methods, the TensorAbuse detection tool fails to identify any of these models, as its static graph-based approach cannot capture deserialization exploits that occur before or outside the computational graph instantiation.
 
-\noindent \textbf{Performance on the MalHug Dataset.} Traditional static detection tools such as JFrog, Protect AI, and ClamAV achieve relatively high recall rates by relying on established vulnerability signatures. However, these baselines exhibit a critical limitation: they fail to distinguish actual weaponized attacks from the 11 benign proof-of-concept models. By simply classifying any model containing a vulnerable signature as malicious, these methods generate substantial false positives.
+\noindent \textbf{Performance on the MalHug dataset.} Traditional static detection tools such as JFrog, Protect AI, and ClamAV achieve relatively high recall rates by relying on established vulnerability signatures. However, these baselines exhibit a critical limitation: they fail to distinguish actual weaponized attacks from the 11 benign proof-of-concept models. By simply classifying any model containing a vulnerable signature as malicious, these methods generate substantial false positives.
 
 In contrast, \toolname{} successfully detects 76 out of 78 genuinely malicious models while accurately categorizing all 11 proof-of-concept models as non-malicious. Because \toolname{} evaluates the actual intent of dynamic behavior rather than merely matching static signatures, it demonstrates robust resilience against false positives. Notably, the TensorAbuse detector fails to identify any of these models, as its static graph-based approach cannot detect deserialization exploits triggered before computational graph initialization or outside the scope of the computational graph.
 
 \begin{table}[t!]
     \scriptsize
     \centering
-    \caption{Detected malicious models on the TensorAbuse Synthetic Dataset by attack type (20 per type).}
+    \caption{Detected malicious models on the TensorAbuse Synthetic Dataset by attack type (40 per type).}
     \resizebox{0.49\textwidth}{!}{\begin{tblr}{
         cell{1-2}{1-6} = {c},
         cell{3-7}{2-6} = {c},
@@ -90,11 +92,11 @@ In contrast, \toolname{} successfully detects 76 out of 78 genuinely malicious m
 
     \SetCell[r = 2, c = 1]{c} \textbf{Method} & \SetCell[r = 1, c = 4]{c} \textbf{Attack Type (Total models)} & & & & \SetCell[r = 2, c = 1]{c} \textbf{Total Detected} \\ \cline{2-5}
     & \textbf{File Exfil.} & \textbf{IP Exposure} & \textbf{Code Insertion} & \textbf{Remote Shell} & \\ \hline
-    \textbf{JFrog}       & 20 / 20 & 0 / 20  & 0 / 20  & 10 / 20 & 30 / 80 \\
-    \textbf{Protect AI}  & 20 / 20 & 0 / 20  & 0 / 20  & 20 / 20 & 40 / 80 \\
-    \textbf{ClamAV}      & 0 / 20  & 0 / 20  & 0 / 20  & 0 / 20  & 0 / 80 \\
-    \textbf{TensorAbuse} & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\ \hline
-    \textbf{\toolname{}}         & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{20} / 20 & \textbf{80} / 80 \\
+    \textbf{JFrog}       & 40 / 40 & 0 / 40  & 0 / 40  & 20 / 40 & 60 / 160 \\
+    \textbf{Protect AI}  & \textbf{40} / 40 & \textbf{40} / 40  & \textbf{40} / 40  & \textbf{40} / 40 & \textbf{160} / 160 \\
+    \textbf{ClamAV}      & 0 / 40  & 0 / 40  & 0 / 40  & 0 / 40  & 0 / 160 \\
+    \textbf{TensorAbuse} & \textbf{40} / 40 & \textbf{40} / 40 & \textbf{40} / 40 & \textbf{40} / 40 & \textbf{160} / 160 \\ \hline
+    \textbf{\toolname{}}         & \textbf{40} / 40 & \textbf{40} / 40 & \textbf{40} / 40 & \textbf{40} / 40 & \textbf{160} / 160 \\
     \end{tblr} }
     \label{tab:synthetic_result}
 \end{table}
@@ -104,11 +106,10 @@ In contrast, \toolname{} successfully detects 76 out of 78 genuinely malicious m
 %
 %Conversely, \toolname{} achieves this 100\% detection rate without relying on static signatures or predefined API lists. By statistically profiling the benign baseline behaviors of models like BERT and VGG16, and dynamically intercepting the anomalous system calls generated by the malicious payloads such as unexpected network connections or file reads, \toolname{} accurately identifies the malicious intent regardless of the specific attack vector employed. The performance of the remaining baseline tools—JFrog, Protect AI, and ClamAV—varies significantly across the different attack categories, highlighting the limitations of traditional scanning tools when faced with sophisticated, framework-native manipulations.
 
-\noindent \textbf{Performance on the Advanced TensorAbuse Synthetic Dataset.} Table~\ref{tab:synthetic_result} provides a detailed breakdown of the detection results. Both \toolname{} and the TensorAbuse detection tool successfully detect 100\% of the malicious models. The TensorAbuse tool achieves perfect detection here because these attacks were generated using its own primitive methodologies, making them highly visible to its static API-checking mechanism. However, as shown in Table~\ref{tab:combined_result}, its static approach fails entirely against attacks outside its predefined scope.
+\noindent \textbf{Performance on the advanced TensorAbuse synthetic dataset.} Table~\ref{tab:synthetic_result} provides a detailed breakdown of the detection results. Protect AI and the TensorAbuse detection tool successfully detect 100\% of the malicious models. The TensorAbuse tool achieves perfect detection here because these attacks were generated using its own primitive methodologies, making them highly visible to its static API-checking mechanism. The same to Protect AI, which integrates a scanning mechanism similar to TensorAbuse. However, as shown in Table~\ref{tab:combined_result}, its static approach fails entirely against attacks outside its predefined scope.
 
-Conversely, \toolname{} achieves this 100\% detection rate without relying on static signatures or predefined API lists. By statistically profiling benign baseline behaviors of models and dynamically intercepting the anomalous system calls generated by malicious payloads, \toolname{} accurately identifies malicious intent regardless of the specific attack vector. The performance of JFrog, Protect AI, and ClamAV varies significantly across attack categories, highlighting the limitations of traditional scanning tools against sophisticated, framework-native manipulations.
+In contrast, \toolname{} achieves this 100\% detection rate without relying on static signatures or pre-defined API allowlists. By statistically profiling benign baseline behaviors of models and dynamically intercepting the anomalous system calls generated by malicious payloads, \toolname{} accurately identifies malicious intent regardless of the specific attack vector. The performance of JFrog and ClamAV varies significantly across attack categories, highlighting the limitations of traditional scanning tools against sophisticated, framework-native manipulations.
 
-To further verify \toolname{}'s capability against false positives, we also evaluate all methods on benign models.
 
 % \begin{table}[h!]
 %     \scriptsize
@@ -130,10 +131,10 @@ To further verify \toolname{}'s capability against false positives, we also eval
 %     \end{tblr} }
 %     \label{tab:benign_result}
 % \end{table}
+To further verify \toolname{}'s capability against false positives, we also evaluate all methods on benign models.
+The precision results on the Advanced TensorAbuse Synthetic Dataset in Table~\ref{tab:combined_result} clearly reveal the drawbacks of static detection mechanisms. TensorAbuse and Protect AI misclassify all 100 benign models as malicious, resulting in a 100\% false positive rate. It relies solely on static scanning against a predefined blacklist of high-risk APIs and lacks the ability to understand API semantics and invocation context. Similarly, JFrog also produces numerous misclassifications, indicating that signature-based detection methods fail when legitimate operations overlap with known attack patterns.
 
-The precision results on the Advanced TensorAbuse Synthetic Dataset in Table~\ref{tab:combined_result} clearly reveal the drawbacks of static detection mechanisms. TensorAbuse misclassifies all 40 benign models as malicious, resulting in a 100\% false positive rate. It relies solely on static scanning against a predefined blacklist of high-risk APIs and lacks the ability to understand API semantics and invocation context. Similarly, JFrog and Protect AI also produce numerous misclassifications, indicating that signature-based detection methods fail when legitimate operations overlap with known attack patterns.
-
-In contrast, \toolname{} successfully identifies all 40 models as benign. By dynamically observing runtime execution, \toolname{}'s first stage recognizes that the system calls generated by these APIs align with the established statistical baseline of normal framework operations. When a suspicious operation triggers cross-layer analysis, the LLM-based reasoning engine interprets high-level Python semantics to validate benign intent. This demonstrates that \toolname{} bridges the semantic gap, providing accurate defense without impeding legitimate workflows.
+In contrast, \toolname{} successfully identifies all 100 models as benign. By leveraging runtime dynamic monitoring, \toolname{} recognizes that the system calls generated by these APIs align with the established statistical baseline of normal framework operations. When a suspicious operation triggers cross-layer analysis, the LLM-based reasoning engine interprets high-level Python semantics to validate benign intent. This demonstrates that \toolname{} bridges the semantic gap, providing accurate defense without impeding legitimate workflows.
 
 %% [ORIGINAL CONCLUSION AND OLD RQ2 BENIGN CONTENT -- archived for reference]
 %Overall, the results across both datasets demonstrate that \toolname{} provides a robust, highly generalizable defense mechanism capable of accurately detecting malicious AI model artifacts, regardless of whether they employ common deserialization flaws or advanced, stealthy computational graph manipulations.
@@ -212,17 +213,17 @@ We assess efficiency using two primary metrics:
 \end{figure}
 
 
-\textbf{Performance Overhead Analysis.} The performance impact of \toolname{} on normal model execution is presented in Table~\ref{tab:overhead_result}. \toolname{} introduces marginal overhead: the total execution time increases by an average of only 5.69\%, with the overhead consistently remaining within a narrow 4.9\% to 6.0\% margin across fundamentally different model architectures.
+\noindent \textbf{Performance Overhead Analysis.} The performance impact of \toolname{} on normal model execution is presented in Table~\ref{tab:overhead_result}. \toolname{} introduces marginal overhead: the total execution time increases by an average of only 5.69\%, with the overhead consistently remaining within a narrow 4.9\% to 6.0\% margin across fundamentally different model architectures.
 
-This performance penalty is attributed to our architectural design. First, the application-layer dynamic instrumentation employs a lightweight boundary-hooking mechanism that only captures high-level metadata instead of deeply traversing and serializing complex, multi-gigabyte Tensor objects. More importantly, the Autoencoder screening module and the \ac{llm} reasoning module run entirely asynchronously on the CPU. Because they do not compete for GPU memory or compute cycles, the intensive matrix multiplications and data parallelism required for AI inference remain completely unhindered.
+This performance penalty is attributed to our architectural design. First, the application-layer dynamic instrumentation employs a lightweight boundary-hooking mechanism that only captures high-level metadata instead of deeply traversing and serializing complex, multi-gigabyte Tensor objects. More importantly, the Autoencoder screening module and the LLM reasoning module run entirely asynchronously on the CPU. Because they do not compete for GPU memory or compute cycles, the intensive matrix multiplications and data parallelism required for AI inference remain completely unhindered.
 
 To further demonstrate that our detection system minimally impacts inference efficiency, we analyzed the relationship between the number of inference iterations and relative latency overhead. Figure~\ref{fig:inference_overhead} illustrates the execution time of the BERT model over 1 to 10 inference steps, comparing vanilla execution with \toolname{}-monitored execution. The relative overhead percentage is highest during the initial executions but quickly drops and stabilizes at a lower baseline as the number of inferences increases.
 
-This phenomenon aligns with the operating characteristics of deep learning frameworks. The model loading and initialization phases generate a large number of intensive system calls, such as memory mapping operations and heavy file I/O for loading model weights, which incur temporary CPU-bound monitoring overhead. However, once the model enters the continuous inference phase, intensive computations are primarily offloaded to hardware accelerators. These computations generate very few new system calls and do not occupy main CPU resources. Therefore, the overhead introduced by dynamic instrumentation and system call monitoring gradually diminishes.
+This observation conforms to the inherent runtime behavior of deep learning frameworks. During model loading and initialization, the framework emits a dense stream of system calls, such as memory mapping operations and heavy file I/O for loading model weights, which introduces transient CPU-heavy monitoring overhead. In contrast, after the model transitions to steady inference, most compute-intensive workloads are offloaded to hardware accelerators.  Such computation generates minimal new system calls and consumes negligible host CPU resources. Consequently, the performance overhead brought by dynamic instrumentation and real-time syscall tracing gradually subsides.
 
-\textbf{Detection Latency Analysis.} As shown in Table~\ref{tab:overhead_result}, \toolname{} achieves an average detection latency of 9.79 seconds. This latency encompasses the full analytical pipeline: capturing low-level system calls, completing the Autoencoder forward pass, extracting the corresponding Python contextual logs, and generating the final \ac{llm} intent classification. The \ac{llm} intent classification is only invoked on a small fraction of operations marked as abnormal by the Autoencoder, so its cost does not scale with total runtime but solely with the number of suspicious events.
+\noindent \textbf{Detection Latency Analysis.} As shown in Table~\ref{tab:overhead_result}, \toolname{} achieves an average detection latency of 9.79 seconds. This latency encompasses the full analytical pipeline: capturing low-level system calls, completing the Autoencoder forward pass, extracting the corresponding Python contextual logs, and generating the final \ac{llm} intent classification. The \ac{llm} intent classification is only invoked on a small fraction of operations marked as abnormal by the Autoencoder, so its cost does not scale with total runtime but solely with the number of suspicious events.
 
-While dynamic reasoning inherently introduces some delay compared to simple signature matching, this two-stage design keeps the overall overhead well within the acceptable budget for offline model vetting pipelines and pre-deployment security checks. 
+Although dynamic cross-layer reasoning inevitably introduces slight latency compared with lightweight signature matching, this two-stage architecture constrains the overall performance overhead within a practical range, making our approach fully applicable to offline model vetting and pre-deployment security auditing pipelines.
 
 \label{sec:rq3}
 
@@ -254,8 +255,7 @@ In this section, we evaluate the contribution of each core component of \toolnam
 \end{table}
 
 
-We evaluate these two variants and compare them with the full \toolname{} model. The evaluation metrics cover detection accuracy and system efficiency. Table~\ref{tab:ablation_metrics} details the comprehensive metrics.
-Overall, both variants exhibit significantly degraded performance or unacceptable system overhead compared to the full model, proving that both stages are indispensable.
+We extensively evaluate these two ablated variants and compare their performance with the full \toolname{} model in terms of detection accuracy and runtime efficiency. Detailed quantitative results are presented in Table~\ref{tab:ablation_metrics}. Overall, both variants suffer from substantial performance degradation or prohibitive runtime overhead compared with the complete pipeline, demonstrating that both stages are indispensable to the overall framework.
 
 Specifically, \toolname{}-S suffers from a catastrophic decrease in detection efficiency and a massive surge in \ac{llm} token consumption. Because it bypasses the Autoencoder screening, the \ac{llm} is overwhelmed by the massive volume of benign, repetitive system events. This increases the average detection latency and incurs extreme API costs. It also slightly reduces precision, as the \ac{llm} is more prone to hallucination when processing excessive background noise. This demonstrates that the statistical screening stage is crucial for filtering out normal activity and maintaining practical deployability.
 

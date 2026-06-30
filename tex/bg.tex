@@ -50,7 +50,7 @@ Insecure serialization attacks exploit the flexibility of model storage formats.
 
 % Besides serialization vulnerabilities, attackers are increasingly launching attacks by abusing native framework APIs. In these scenarios, malicious logic is not embedded as standalone executable scripts but is instead compiled directly into the computational graph of the model. Frameworks like TensorFlow offer extensive lower-level APIs for tasks such as distributed training or local debugging, which inherently possess capabilities like file system access or network communication\cite{199317}. Attackers hijack these standard operations to perform unauthorized actions. For example, utilizing officially supported debugging APIs to exfiltrate local data to remote servers ensures the malicious actions are executed entirely through the native framework components.
 
-Framework-native attacks weaponize legitimate framework APIs to execute malicious operations without obvious malicious syntax\cite{zhu2025}. Malicious logic is compiled directly into the computational graph~\cite{langford2024architecturalneuralbackdoorsprinciples} rather than embedded as standalone scripts. This technique is exceptionally stealthy: malicious operations can remain dormant during loading and trigger only during inference. Security monitors without application-layer context cannot distinguish legitimate from malicious operations.
+Framework-native attacks weaponize legitimate framework APIs to execute malicious operations without obvious malicious syntax\cite{zhu2025}. Malicious logic is compiled directly into the computational graph~\cite{langford2024architecturalneuralbackdoorsprinciples} rather than embedded as standalone scripts. This technique is exceptionally stealthy: Security monitors without application-layer context cannot distinguish legitimate from malicious operations.
 
 \subsection{Existing Defenses and Their Limitations}
 
@@ -58,7 +58,7 @@ While extensive research addresses inference-time threats such as adversarial ex
 
 Fickling~\cite{fickling} decompiles pickle bytecodes into readable Python code to identify embedded malicious payloads. Hugging Face employs Picklescanning~\cite{picklescanning}, which combines ClamAV~\cite{clamav} with import table inspection within pickle files. A static detection methodology for suspicious API calls in computational graphs was also proposed alongside TensorAbuse.
 
-These static tools are inherently reactive, lacking a comprehensive understanding of evolving attack vectors\cite{qian2025softwarevulnerabilityanalysisprogramming}. They address specific, previously observed vulnerabilities rather than adopting a holistic approach, severely restricting their ability to defend against zero-day exploits or novel attacks~\cite{tehrani2025llmvssasttechnical}.
+Such static detection tools are inherently reactive and fail to fully capture the continuously evolving spectrum of attack vectors.\cite{qian2025softwarevulnerabilityanalysisprogramming}. They address specific, previously observed vulnerabilities rather than adopting a holistic approach, severely restricting their ability to defend against zero-day exploits or novel attacks~\cite{tehrani2025llmvssasttechnical}.
 
 \subsection{Motivation}
 \label{sec:motivation}
@@ -85,7 +85,7 @@ To concretely illustrate why static, signature-based defenses fail against frame
 }
 \end{algorithm}
 
-The attack proceeds in three stages, each abusing a legitimate TensorFlow API so that no overtly malicious syntax appears:
+The attack proceeds in three stages, each abusing a legitimate TensorFlow API so that no malicious syntax appears:
 
 \begin{enumerate}[leftmargin=*]
     \item \textbf{File discovery and reading.} \texttt{tf.io.matching\_files} expands a wildcard path pattern and returns the first match; \texttt{tf.raw\_ops.ReadFile} then reads the entire file content into a tensor. Both APIs are officially provided by TensorFlow for dataset loading and routinely used in benign models, so their presence does not constitute a static signature of malice.
