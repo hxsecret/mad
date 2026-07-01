@@ -81,7 +81,7 @@ Algorithm~\ref{alg:instrumentation} formalizes this discovery and wrapping logic
 }
 \end{algorithm}
 
-\noindent \textbf{Runtime: Wrapper injection and context logging.}
+\noindent \textbf{Runtime: wrapper injection and context logging.}
 At process startup, the generated script employs monkey patching (\texttt{setattr}) to replace original functions with wrapper closures. Thereafter, any invocation of a wrapped API triggers the injected closure, which captures the execution context and serializes it as a structured semantic event:
 \begin{equation}
 \ell_i = \langle \textit{FuncName},\; \textit{ArgsSummary} \rangle.
