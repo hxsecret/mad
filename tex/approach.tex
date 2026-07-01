@@ -122,7 +122,7 @@ The final feature matrix combines $\mathbf{v}_{\textit{dir}}$ and $\mathbf{v}_{\
 
 We adopt unsupervised anomaly detection because benign model loading and inference produce a stable, learnable distribution of system-call operations, whereas malicious behaviors are inherently rare and diverse, making supervised classification impractical without labeled attack samples that cover the full threat space. Among unsupervised methods, we choose an Autoencoder for its conceptual simplicity and proven effectiveness in reconstruction-based anomaly detection: it learns to faithfully reconstruct benign operation vectors during training and naturally flags any vector it cannot faithfully reconstruct as anomalous.
 
-We train an Autoencoder on operation vectors collected from benign model. Given an operation vector $\mathbf{v}$, the Autoencoder computes a reconstruction error
+We train an Autoencoder on operation vectors collected from benign model. Given an operation vector $\mathbf{v}$, the Autoencoder computes a reconstruction error:
 \begin{equation}
 E = \left\lVert \mathbf{v} - \textit{Dec}(\textit{Enc}(\mathbf{v})) \right\rVert_2^2,
 \end{equation}
